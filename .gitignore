@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+
+# Raw Dukascopy tick cache (resumable download state, not source data)
+cache/
