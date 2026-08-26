@@ -4,10 +4,13 @@ Runs the Daily/8H-bias, 4H-structure, 1H-BOS-retest strategy over the
 Dukascopy CSVs in `data/` for AUDCHF, AUDUSD, EURCHF and EURUSD.
 
 ```bash
-python3 backtest/backtest.py            # stdlib only, no packages needed
+python3 backtest/backtest.py --out backtest/results/origin-swing
+python3 backtest/backtest.py --sl-mode broken-level --out backtest/results/broken-level
 ```
 
-Outputs land in `backtest/results/`:
+Stdlib only, no packages needed. Committed results live in
+`backtest/results/origin-swing/` (wide SL) and `backtest/results/broken-level/`
+(tight SL); each directory contains:
 
 | File | Contents |
 |---|---|
@@ -36,9 +39,11 @@ Outputs land in `backtest/results/`:
      BOS leg came from (for a long: 1 pip below the latest confirmed 4H
      swing low). This is the standard reading of "beyond the swing that
      produced the BOS" and gives stops the 1H data can actually resolve.
-   - `broken-level`: literally 1 pip beyond the broken 4H level itself.
-     Note the entry *is* the broken level, so risk collapses to the buffer
-     (~1 pip) — untestable at 1H granularity; provided for comparison only.
+   - `broken-level`: 1 pip beyond the broken 4H level itself — the literal
+     reading — widened to at least beyond the low/high of the 1H BOS candle.
+     Without that minimum the entry *is* the broken level and risk collapses
+     to the buffer (~1 pip), untestable at 1H granularity; anchoring to the
+     BOS candle extreme keeps the tight stop but gives it a real distance.
 6. **Take profit** — fixed 1:2 RR from the actual fill. No exceptions:
    positions are held to SL or TP regardless of later bias changes.
 7. **Risk** — 1% of current booked equity per trade, compounding.

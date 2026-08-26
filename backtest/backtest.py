@@ -321,13 +321,24 @@ def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
             if bias == "long" and broken_high is not None:
                 origin = h4.latest_low()
                 if origin is not None and origin.price < broken_high.price:
-                    sl = (origin.price if cfg.sl_mode == "origin-swing" else broken_high.price) - buffer
+                    if cfg.sl_mode == "origin-swing":
+                        anchor = origin.price
+                    else:
+                        # broken-level: just beyond the broken 4H level, but at
+                        # least beyond the low of the 1H BOS candle so the stop
+                        # distance is testable at 1H granularity
+                        anchor = min(broken_high.price, c.l)
+                    sl = anchor - buffer
                     if sl < broken_high.price:
                         setup = Setup("long", broken_high.price, sl, t, cfg.retest_window)
             elif bias == "short" and broken_low is not None:
                 origin = h4.latest_high()
                 if origin is not None and origin.price > broken_low.price:
-                    sl = (origin.price if cfg.sl_mode == "origin-swing" else broken_low.price) + buffer
+                    if cfg.sl_mode == "origin-swing":
+                        anchor = origin.price
+                    else:
+                        anchor = max(broken_low.price, c.h)
+                    sl = anchor + buffer
                     if sl > broken_low.price:
                         setup = Setup("short", broken_low.price, sl, t, cfg.retest_window)
 
@@ -480,7 +491,8 @@ def main():
                     default="origin-swing",
                     help="origin-swing: SL beyond the opposite 4H swing the BOS leg "
                          "came from (default). broken-level: SL just beyond the "
-                         "broken 4H level itself (literal reading; very tight stops).")
+                         "broken 4H level, widened to at least beyond the 1H BOS "
+                         "candle's low/high so the stop is testable at 1H data.")
     ap.add_argument("--sl-buffer-pips", type=float, default=1.0,
                     help="'just beyond' buffer in pips (default 1)")
     ap.add_argument("--rr", type=float, default=2.0, help="reward:risk (default 2)")
