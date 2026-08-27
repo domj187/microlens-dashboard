@@ -7,11 +7,13 @@ Dukascopy CSVs in `data/` for AUDCHF, AUDUSD, EURCHF and EURUSD.
 python3 backtest/backtest.py --out backtest/results/origin-swing
 python3 backtest/backtest.py --sl-mode broken-level --out backtest/results/broken-level
 python3 backtest/backtest.py --rr 1.8 --out backtest/results/origin-swing-rr1.8
+python3 backtest/backtest.py --breakeven --out backtest/results/origin-swing-be
 ```
 
 Stdlib only, no packages needed. Committed results live in
 `backtest/results/origin-swing/` (wide SL, 1:2), `backtest/results/broken-level/`
-(tight SL, 1:2) and `backtest/results/origin-swing-rr1.8/` (wide SL, 1:1.8);
+(tight SL, 1:2), `backtest/results/origin-swing-rr1.8/` (wide SL, 1:1.8) and
+`backtest/results/origin-swing-be/` (wide SL, 1:2, breakeven rule);
 each directory contains:
 
 | File | Contents |
@@ -49,6 +51,15 @@ each directory contains:
 6. **Take profit** — fixed 1:2 RR from the actual fill. No exceptions:
    positions are held to SL or TP regardless of later bias changes.
 7. **Risk** — 1% of current booked equity per trade, compounding.
+8. **Breakeven rule** (optional, `--breakeven`) — when price reaches +1R in
+   favour of the trade, the stop moves to entry; a later stop-out at entry is
+   a 0R "scratch". The trigger is never armed on the entry candle (the fill
+   point within it is unknown), and a bar that touches +1R and also trades
+   back through entry scratches conservatively (flagged ambiguous). The
+   trade list gains `reached_1r` and `no_be_outcome` columns — the latter
+   shows, for each scratched trade, whether it would have hit TP or SL
+   without the rule (shadow-simulated with the original stop), and
+   `summary.json` gains a `breakeven_mechanics` block with the totals.
 
 ## No look-ahead bias
 

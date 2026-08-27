@@ -91,9 +91,13 @@ class Trade:
     tp: float
     exit_time: datetime | None = None
     exit_price: float | None = None
-    result: str | None = None      # "win" / "loss" / "open"
+    result: str | None = None      # "win" / "loss" / "scratch" / "open"
     r_multiple: float = 0.0
     ambiguous: bool = False
+    # breakeven rule bookkeeping (only used with --breakeven):
+    orig_sl: float = 0.0           # stop as originally placed
+    be_armed: bool = False         # reached +1R, stop moved to entry
+    shadow: str = ""               # scratched trades: outcome without the rule
     # filled in by the portfolio pass:
     risk_amount: float = 0.0
     units: float = 0.0
@@ -264,11 +268,15 @@ def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
 
         # ---- 1) manage open position on this candle
         if pos is not None:
-            hit_sl = c.l <= pos.sl if pos.direction == "long" else c.h >= pos.sl
-            hit_tp = c.h >= pos.tp if pos.direction == "long" else c.l <= pos.tp
-            if hit_sl:  # SL has priority (conservative when both are in range)
+            is_long = pos.direction == "long"
+            hit_sl = c.l <= pos.sl if is_long else c.h >= pos.sl
+            hit_tp = c.h >= pos.tp if is_long else c.l <= pos.tp
+            if hit_sl:  # stop has priority (conservative when both are in range)
                 pos.exit_time, pos.exit_price = t, pos.sl
-                pos.result, pos.r_multiple = "loss", -1.0
+                if pos.be_armed:  # stop already moved to entry -> scratch
+                    pos.result, pos.r_multiple = "scratch", 0.0
+                else:
+                    pos.result, pos.r_multiple = "loss", -1.0
                 pos.ambiguous = hit_tp
                 trades.append(pos)
                 pos = None
@@ -277,6 +285,20 @@ def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
                 pos.result, pos.r_multiple = "win", cfg.rr
                 trades.append(pos)
                 pos = None
+            elif cfg.breakeven and not pos.be_armed:
+                risk = abs(pos.entry - pos.orig_sl)
+                trigger = pos.entry + risk if is_long else pos.entry - risk
+                if (c.h >= trigger) if is_long else (c.l <= trigger):
+                    pos.be_armed = True
+                    pos.sl = pos.entry
+                    # the same bar also traded back through entry: intrabar
+                    # order is unknown -> conservative scratch now
+                    if (c.l <= pos.entry) if is_long else (c.h >= pos.entry):
+                        pos.exit_time, pos.exit_price = t, pos.entry
+                        pos.result, pos.r_multiple = "scratch", 0.0
+                        pos.ambiguous = True
+                        trades.append(pos)
+                        pos = None
 
         # ---- 2) pending setup: cancel / fill on the retest
         if setup is not None and pos is None:
@@ -294,11 +316,13 @@ def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
                 if filled is not None:
                     risk = abs(filled - setup.sl)
                     tp = filled + cfg.rr * risk if setup.direction == "long" else filled - cfg.rr * risk
-                    pos = Trade(pair, setup.direction, setup.bos_time, t, filled, setup.sl, tp)
+                    pos = Trade(pair, setup.direction, setup.bos_time, t, filled, setup.sl, tp,
+                                orig_sl=setup.sl)
                     setup = None
                     # exit checks on the entry candle itself (post-fill path
                     # unknown -> SL if the far side was traded, TP only on a
-                    # close beyond TP)
+                    # close beyond TP; the breakeven trigger is never armed on
+                    # the entry candle since the fill point within it is unknown)
                     hit_sl = c.l <= pos.sl if pos.direction == "long" else c.h >= pos.sl
                     tp_close = c.c >= pos.tp if pos.direction == "long" else c.c <= pos.tp
                     if hit_sl:
@@ -345,13 +369,33 @@ def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
     if pos is not None:  # still open at end of data
         pos.result = "open"
         trades.append(pos)
+
+    if cfg.breakeven:
+        # counterfactual for each scratched trade: keep the original stop and
+        # walk forward from the scratch bar -> would it have hit TP or SL?
+        close_times = [b.close_time for b in h1]
+        import bisect
+        for tr in trades:
+            if tr.result != "scratch":
+                continue
+            # start at the scratch bar itself: it may have traded through the
+            # original stop after (or before) touching entry
+            i = bisect.bisect_left(close_times, tr.exit_time)
+            tr.shadow = "open"
+            for b in h1[i:]:
+                if (b.l <= tr.orig_sl) if tr.direction == "long" else (b.h >= tr.orig_sl):
+                    tr.shadow = "SL"  # stop priority, same conservative rule
+                    break
+                if (b.h >= tr.tp) if tr.direction == "long" else (b.l <= tr.tp):
+                    tr.shadow = "TP"
+                    break
     return trades
 
 
 # ---------------------------------------------------------------- portfolio
 
 def run_portfolio(all_trades: list[Trade], cfg: argparse.Namespace):
-    closed = [tr for tr in all_trades if tr.result in ("win", "loss")]
+    closed = [tr for tr in all_trades if tr.result in ("win", "loss", "scratch")]
     events = []  # (time, order, trade)  order: 0 = exit, 1 = entry
     for tr in closed:
         events.append((tr.entry_time, 1, tr))
@@ -364,7 +408,7 @@ def run_portfolio(all_trades: list[Trade], cfg: argparse.Namespace):
     for t, kind, tr in events:
         if kind == 1:
             tr.risk_amount = equity * cfg.risk_pct / 100.0
-            tr.units = tr.risk_amount / abs(tr.entry - tr.sl)
+            tr.units = tr.risk_amount / abs(tr.entry - tr.orig_sl)
         else:
             tr.pnl = tr.r_multiple * tr.risk_amount
             equity += tr.pnl
@@ -375,6 +419,7 @@ def run_portfolio(all_trades: list[Trade], cfg: argparse.Namespace):
 
     wins = [tr for tr in closed if tr.result == "win"]
     losses = [tr for tr in closed if tr.result == "loss"]
+    scratches = [tr for tr in closed if tr.result == "scratch"]
     gross_win = sum(tr.pnl for tr in wins)
     gross_loss = -sum(tr.pnl for tr in losses)
     summary = {
@@ -383,10 +428,12 @@ def run_portfolio(all_trades: list[Trade], cfg: argparse.Namespace):
             "swing_n": cfg.swing_n, "retest_window_bars": cfg.retest_window,
             "sl_mode": cfg.sl_mode, "sl_buffer_pips": cfg.sl_buffer_pips,
             "rr": cfg.rr, "risk_pct": cfg.risk_pct, "start_equity": cfg.start_equity,
+            "breakeven": cfg.breakeven,
         },
         "total_trades": len(closed),
         "wins": len(wins),
         "losses": len(losses),
+        "scratches": len(scratches),
         "open_at_end": sum(1 for tr in all_trades if tr.result == "open"),
         "ambiguous_bars": sum(1 for tr in closed if tr.ambiguous),
         "win_rate_pct": round(100.0 * len(wins) / len(closed), 2) if closed else None,
@@ -405,6 +452,22 @@ def run_portfolio(all_trades: list[Trade], cfg: argparse.Namespace):
             "win_rate_pct": round(100.0 * pw / len(pt), 2) if pt else None,
             "pnl": round(sum(tr.pnl for tr in pt), 2),
         }
+
+    if cfg.breakeven:
+        # a win always passed +1R on the way to +2R; armed trades that ended
+        # as scratch or were still open also reached it
+        armed_open = sum(1 for tr in all_trades if tr.result == "open" and tr.be_armed)
+        summary["breakeven_mechanics"] = {
+            "reached_1r": len(wins) + len(scratches) + armed_open,
+            "went_on_to_tp": len(wins),
+            "scratched": len(scratches),
+            "armed_still_open": armed_open,
+            "scratched_would_have_hit": {
+                "TP": sum(1 for tr in scratches if tr.shadow == "TP"),
+                "SL": sum(1 for tr in scratches if tr.shadow == "SL"),
+                "open": sum(1 for tr in scratches if tr.shadow == "open"),
+            },
+        }
     return summary, curve
 
 
@@ -422,14 +485,18 @@ def write_outputs(all_trades: list[Trade], summary: dict, curve, out_dir: str):
         w = csv.writer(f)
         w.writerow(["entry_date_utc", "exit_date_utc", "pair", "direction",
                     "entry", "sl", "tp", "result", "r_multiple", "risk_amount",
-                    "pnl", "equity_after", "bos_time_utc", "ambiguous_bar"])
+                    "pnl", "equity_after", "bos_time_utc", "ambiguous_bar",
+                    "reached_1r", "no_be_outcome"])
         for tr in all_trades:
+            closed = tr.result in ("win", "loss", "scratch")
             w.writerow([fmt_t(tr.entry_time), fmt_t(tr.exit_time), tr.pair,
-                        tr.direction, f"{tr.entry:.5f}", f"{tr.sl:.5f}",
+                        tr.direction, f"{tr.entry:.5f}", f"{tr.orig_sl:.5f}",
                         f"{tr.tp:.5f}", tr.result, tr.r_multiple,
                         f"{tr.risk_amount:.2f}", f"{tr.pnl:.2f}",
-                        f"{tr.equity_after:.2f}" if tr.result in ("win", "loss") else "",
-                        fmt_t(tr.bos_time), "yes" if tr.ambiguous else ""])
+                        f"{tr.equity_after:.2f}" if closed else "",
+                        fmt_t(tr.bos_time), "yes" if tr.ambiguous else "",
+                        "yes" if (tr.be_armed or tr.result == "win") else "",
+                        tr.shadow])
 
     with open(os.path.join(out_dir, "equity_curve.csv"), "w", newline="") as f:
         w = csv.writer(f)
@@ -496,6 +563,11 @@ def main():
     ap.add_argument("--sl-buffer-pips", type=float, default=1.0,
                     help="'just beyond' buffer in pips (default 1)")
     ap.add_argument("--rr", type=float, default=2.0, help="reward:risk (default 2)")
+    ap.add_argument("--breakeven", action="store_true",
+                    help="when price reaches +1R in favour, move the stop to "
+                         "entry (never armed on the entry candle; a bar that "
+                         "touches +1R and trades back through entry scratches "
+                         "conservatively)")
     ap.add_argument("--risk-pct", type=float, default=1.0, help="risk per trade, %% of equity")
     ap.add_argument("--start-equity", type=float, default=10_000.0)
     ap.add_argument("--out", default=os.path.join(HERE, "results"))
@@ -505,7 +577,7 @@ def main():
     for pair in PAIRS:
         trades = run_pair(pair, cfg)
         all_trades.extend(trades)
-        print(f"{pair}: {sum(1 for t in trades if t.result in ('win', 'loss'))} closed trades")
+        print(f"{pair}: {sum(1 for t in trades if t.result in ('win', 'loss', 'scratch'))} closed trades")
 
     summary, curve = run_portfolio(all_trades, cfg)
     write_outputs(all_trades, summary, curve, cfg.out)
@@ -513,6 +585,7 @@ def main():
     print()
     print(f"Total trades:   {summary['total_trades']}"
           f"  (wins {summary['wins']} / losses {summary['losses']}"
+          f" / scratches {summary['scratches']}"
           f", open at end: {summary['open_at_end']})")
     print(f"Win rate:       {summary['win_rate_pct']}%")
     print(f"Profit factor:  {summary['profit_factor']}")
@@ -520,6 +593,16 @@ def main():
           f"(final equity {summary['final_equity']:,.2f})")
     print(f"Max drawdown:   {summary['max_drawdown_pct']}%")
     print(f"Ambiguous bars (counted as per conservative rules): {summary['ambiguous_bars']}")
+    if "breakeven_mechanics" in summary:
+        m = summary["breakeven_mechanics"]
+        sw = m["scratched_would_have_hit"]
+        print(f"\nBreakeven mechanics:")
+        print(f"  reached +1R:           {m['reached_1r']}"
+              f"  (still open at end: {m['armed_still_open']})")
+        print(f"  went on to hit TP:     {m['went_on_to_tp']}")
+        print(f"  scratched at entry:    {m['scratched']}")
+        print(f"  scratched, without rule would have hit: "
+              f"TP {sw['TP']} / SL {sw['SL']} / still open {sw['open']}")
     print(f"\nPer pair:")
     for p, s in summary["per_pair"].items():
         print(f"  {p}: {s['trades']} trades, win rate {s['win_rate_pct']}%, pnl {s['pnl']:,.2f}")

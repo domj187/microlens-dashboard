@@ -1,0 +1,67 @@
+{
+  "pairs": [
+    "AUDCHF",
+    "AUDUSD",
+    "EURCHF",
+    "EURUSD"
+  ],
+  "config": {
+    "swing_n": 2,
+    "retest_window_bars": 24,
+    "sl_mode": "origin-swing",
+    "sl_buffer_pips": 1.0,
+    "rr": 2.0,
+    "risk_pct": 1.0,
+    "start_equity": 10000.0,
+    "breakeven": true
+  },
+  "total_trades": 201,
+  "wins": 43,
+  "losses": 105,
+  "scratches": 53,
+  "open_at_end": 3,
+  "ambiguous_bars": 5,
+  "win_rate_pct": 21.39,
+  "profit_factor": 0.816,
+  "net_profit": -1838.54,
+  "net_return_pct": -18.39,
+  "max_drawdown_pct": 23.33,
+  "final_equity": 8161.46,
+  "per_pair": {
+    "AUDCHF": {
+      "trades": 39,
+      "wins": 9,
+      "win_rate_pct": 23.08,
+      "pnl": 90.41
+    },
+    "AUDUSD": {
+      "trades": 59,
+      "wins": 9,
+      "win_rate_pct": 15.25,
+      "pnl": -1226.35
+    },
+    "EURCHF": {
+      "trades": 31,
+      "wins": 9,
+      "win_rate_pct": 29.03,
+      "pnl": 225.1
+    },
+    "EURUSD": {
+      "trades": 72,
+      "wins": 16,
+      "win_rate_pct": 22.22,
+      "pnl": -927.7
+    }
+  },
+  "breakeven_mechanics": {
+    "reached_1r": 96,
+    "went_on_to_tp": 43,
+    "scratched": 53,
+    "armed_still_open": 0,
+    "scratched_would_have_hit": {
+      "TP": 18,
+      "SL": 33,
+      "open": 2
+    }
+  }
+}
