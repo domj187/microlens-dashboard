@@ -128,3 +128,45 @@ python3 backtest/news_analysis.py \
     --trades backtest/results/origin-swing-filtered/trades.csv \
     --calendar data/news/high_impact.csv
 ```
+
+## Pair character analysis
+
+`backtest/pair_character.py` measures the structural character of each pair
+**without running the strategy** — swing size, what follows a break of
+structure, retest availability, daily trend persistence, spread — then ranks
+the pairs on how well they suit a break-and-retest system. It picks up every
+pair that has a complete set of files in `data/`, so new pairs are included
+automatically.
+
+```bash
+python3 backtest/pair_character.py
+python3 backtest/pair_character.py --pairs EURUSD GBPJPY --json character.json
+```
+
+The follow-through test is calibrated against a **33.3% no-edge baseline**:
+the 2x-depth target sits twice as far away as the invalidation level, so a
+driftless random walk reaches it first one time in three. That is also the
+breakeven rate of a 1:2 target stopped at the origin swing, which makes the
+"vs 33.3%" column a direct read on structural edge.
+
+Spread needs bid and ask data, which `data/` does not hold (mid only):
+
+```bash
+python3 scripts/fetch_dukascopy.py --price bid --pairs ... # -> data_bid/
+python3 scripts/fetch_dukascopy.py --price ask --pairs ... # -> data_ask/
+python3 backtest/pair_character.py --bid-dir data_bid --ask-dir data_ask
+```
+
+### Adding pairs
+
+`datafeed.dukascopy.com` is blocked by the cloud environment's network
+policy, so new pairs must be fetched on a machine with open network access:
+
+```bash
+python3 scripts/fetch_dukascopy.py --years 3 \
+    --pairs GBPUSD USDJPY GBPJPY EURGBP
+```
+
+That writes `data/{PAIR}_{60,240,480,1D}.csv` in the same format as the
+existing four. Commit them and every tool here — backtester included —
+picks them up. JPY pairs are handled: pip size switches to 0.01.
