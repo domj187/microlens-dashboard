@@ -103,3 +103,17 @@ each directory contains:
   which also sidesteps quote-currency conversion for the CHF-quoted pairs.
 - A position still open when the data ends is listed as `open` and excluded
   from the statistics.
+
+## News correlation analysis
+
+`backtest/news_analysis.py` cross-references any run's `trades.csv` with a
+historical high-impact economic calendar and reports win rate / average R
+for news-affected vs clean trades. The calendar cannot be fetched from
+this environment (network policy) — see `data/news/README.md` for the
+drop-in file format and sources, then:
+
+```bash
+python3 backtest/news_analysis.py \
+    --trades backtest/results/origin-swing-filtered/trades.csv \
+    --calendar data/news/high_impact.csv
+```
