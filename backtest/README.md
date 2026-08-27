@@ -6,11 +6,13 @@ Dukascopy CSVs in `data/` for AUDCHF, AUDUSD, EURCHF and EURUSD.
 ```bash
 python3 backtest/backtest.py --out backtest/results/origin-swing
 python3 backtest/backtest.py --sl-mode broken-level --out backtest/results/broken-level
+python3 backtest/backtest.py --rr 1.8 --out backtest/results/origin-swing-rr1.8
 ```
 
 Stdlib only, no packages needed. Committed results live in
-`backtest/results/origin-swing/` (wide SL) and `backtest/results/broken-level/`
-(tight SL); each directory contains:
+`backtest/results/origin-swing/` (wide SL, 1:2), `backtest/results/broken-level/`
+(tight SL, 1:2) and `backtest/results/origin-swing-rr1.8/` (wide SL, 1:1.8);
+each directory contains:
 
 | File | Contents |
 |---|---|
