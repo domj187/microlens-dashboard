@@ -97,6 +97,7 @@ class Trade:
     # breakeven rule bookkeeping (only used with --breakeven):
     orig_sl: float = 0.0           # stop as originally placed
     be_armed: bool = False         # reached +1R, stop moved to entry
+    partial_banked: bool = False   # partial-TP mode: half booked at +1R
     shadow: str = ""               # scratched trades: outcome without the rule
     # filled in by the portfolio pass:
     risk_amount: float = 0.0
@@ -275,6 +276,31 @@ class StructureTracker:
 
 # ---------------------------------------------------------------- backtest
 
+def close_at_tp(pos: Trade, cfg) -> None:
+    """Book a target hit.
+
+    In partial mode the target is only reachable through +1R, so the first
+    half is always already banked by the time TP prints: the trade pays
+    frac x 1R on the banked half plus (1 - frac) x rr on the runner.
+    """
+    pos.result = "win"
+    if cfg.partial_at_1r:
+        pos.partial_banked = True
+        pos.r_multiple = round(cfg.partial_frac * 1.0
+                               + (1.0 - cfg.partial_frac) * cfg.rr, 6)
+    else:
+        pos.r_multiple = cfg.rr
+
+
+def close_at_entry(pos: Trade, cfg) -> None:
+    """Stop-out at entry: the banked partial (if any) is all the trade keeps."""
+    if pos.partial_banked:
+        pos.result = "partial"
+        pos.r_multiple = round(cfg.partial_frac * 1.0, 6)
+    else:
+        pos.result, pos.r_multiple = "scratch", 0.0
+
+
 def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
     h1 = load_candles(pair, "60")
     h4 = StructureTracker(load_candles(pair, "240"), cfg.swing_n)
@@ -309,8 +335,8 @@ def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
             hit_tp = c.h >= pos.tp if is_long else c.l <= pos.tp
             if hit_sl:  # stop has priority (conservative when both are in range)
                 pos.exit_time, pos.exit_price = t, pos.sl
-                if pos.be_armed:  # stop already moved to entry -> scratch
-                    pos.result, pos.r_multiple = "scratch", 0.0
+                if pos.be_armed:  # stop already moved to entry
+                    close_at_entry(pos, cfg)
                 else:
                     pos.result, pos.r_multiple = "loss", -1.0
                 pos.ambiguous = hit_tp
@@ -318,20 +344,22 @@ def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
                 pos = None
             elif hit_tp:
                 pos.exit_time, pos.exit_price = t, pos.tp
-                pos.result, pos.r_multiple = "win", cfg.rr
+                close_at_tp(pos, cfg)
                 trades.append(pos)
                 pos = None
-            elif cfg.breakeven and not pos.be_armed:
+            elif (cfg.breakeven or cfg.partial_at_1r) and not pos.be_armed:
                 risk = abs(pos.entry - pos.orig_sl)
                 trigger = pos.entry + risk if is_long else pos.entry - risk
                 if (c.h >= trigger) if is_long else (c.l <= trigger):
                     pos.be_armed = True
                     pos.sl = pos.entry
+                    if cfg.partial_at_1r:  # bank the first half here
+                        pos.partial_banked = True
                     # the same bar also traded back through entry: intrabar
-                    # order is unknown -> conservative scratch now
+                    # order is unknown -> conservative close at entry now
                     if (c.l <= pos.entry) if is_long else (c.h >= pos.entry):
                         pos.exit_time, pos.exit_price = t, pos.entry
-                        pos.result, pos.r_multiple = "scratch", 0.0
+                        close_at_entry(pos, cfg)
                         pos.ambiguous = True
                         trades.append(pos)
                         pos = None
@@ -368,7 +396,7 @@ def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
                         pos = None
                     elif tp_close:
                         pos.exit_time, pos.exit_price = t, pos.tp
-                        pos.result, pos.r_multiple = "win", cfg.rr
+                        close_at_tp(pos, cfg)
                         pos.ambiguous = True
                         trades.append(pos)
                         pos = None
@@ -433,7 +461,7 @@ def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
 # ---------------------------------------------------------------- portfolio
 
 def run_portfolio(all_trades: list[Trade], cfg: argparse.Namespace):
-    closed = [tr for tr in all_trades if tr.result in ("win", "loss", "scratch")]
+    closed = [tr for tr in all_trades if tr.result in ("win", "loss", "scratch", "partial")]
     events = []  # (time, order, trade)  order: 0 = exit, 1 = entry
     for tr in closed:
         events.append((tr.entry_time, 1, tr))
@@ -458,21 +486,25 @@ def run_portfolio(all_trades: list[Trade], cfg: argparse.Namespace):
     wins = [tr for tr in closed if tr.result == "win"]
     losses = [tr for tr in closed if tr.result == "loss"]
     scratches = [tr for tr in closed if tr.result == "scratch"]
-    gross_win = sum(tr.pnl for tr in wins)
-    gross_loss = -sum(tr.pnl for tr in losses)
+    partials = [tr for tr in closed if tr.result == "partial"]
+    # by sign, so a partial's banked profit counts as gross profit
+    gross_win = sum(tr.pnl for tr in closed if tr.pnl > 0)
+    gross_loss = -sum(tr.pnl for tr in closed if tr.pnl < 0)
     summary = {
         "pairs": PAIRS,
         "config": {
             "swing_n": cfg.swing_n, "retest_window_bars": cfg.retest_window,
             "sl_mode": cfg.sl_mode, "sl_buffer_pips": cfg.sl_buffer_pips,
             "rr": cfg.rr, "risk_pct": cfg.risk_pct, "start_equity": cfg.start_equity,
-            "breakeven": cfg.breakeven, "warmup_swings": cfg.warmup_swings,
+            "breakeven": cfg.breakeven, "partial_at_1r": cfg.partial_at_1r,
+            "partial_frac": cfg.partial_frac, "warmup_swings": cfg.warmup_swings,
             "min_break_pips": cfg.min_break_pips, "trend_mode": cfg.trend_mode,
         },
         "total_trades": len(closed),
         "wins": len(wins),
         "losses": len(losses),
         "scratches": len(scratches),
+        "partials": len(partials),
         "open_at_end": sum(1 for tr in all_trades if tr.result == "open"),
         "ambiguous_bars": sum(1 for tr in closed if tr.ambiguous),
         "win_rate_pct": round(100.0 * len(wins) / len(closed), 2) if closed else None,
@@ -480,6 +512,8 @@ def run_portfolio(all_trades: list[Trade], cfg: argparse.Namespace):
         "net_profit": round(equity - cfg.start_equity, 2),
         "net_return_pct": round(100.0 * (equity / cfg.start_equity - 1.0), 2),
         "max_drawdown_pct": round(100.0 * max_dd, 2),
+        "avg_r": round(sum(tr.r_multiple for tr in closed) / len(closed), 3) if closed else None,
+        "total_r": round(sum(tr.r_multiple for tr in closed), 2),
         "final_equity": round(equity, 2),
         "per_pair": {},
     }
@@ -488,7 +522,9 @@ def run_portfolio(all_trades: list[Trade], cfg: argparse.Namespace):
         pw = sum(1 for tr in pt if tr.result == "win")
         summary["per_pair"][p] = {
             "trades": len(pt), "wins": pw,
+            "partials": sum(1 for tr in pt if tr.result == "partial"),
             "win_rate_pct": round(100.0 * pw / len(pt), 2) if pt else None,
+            "avg_r": round(sum(tr.r_multiple for tr in pt) / len(pt), 3) if pt else None,
             "pnl": round(sum(tr.pnl for tr in pt), 2),
         }
 
@@ -527,7 +563,7 @@ def write_outputs(all_trades: list[Trade], summary: dict, curve, out_dir: str):
                     "pnl", "equity_after", "bos_time_utc", "ambiguous_bar",
                     "reached_1r", "no_be_outcome"])
         for tr in all_trades:
-            closed = tr.result in ("win", "loss", "scratch")
+            closed = tr.result in ("win", "loss", "scratch", "partial")
             w.writerow([fmt_t(tr.entry_time), fmt_t(tr.exit_time), tr.pair,
                         tr.direction, f"{tr.entry:.5f}", f"{tr.orig_sl:.5f}",
                         f"{tr.tp:.5f}", tr.result, tr.r_multiple,
@@ -616,6 +652,14 @@ def main():
                          "break AND a higher low behind it, bear needs the break "
                          "AND a lower high; an unqualified counter-break demotes "
                          "the state to no-trend.")
+    ap.add_argument("--partial-at-1r", action="store_true",
+                    help="take partial profit at +1R: close --partial-frac of "
+                         "the position there and move the stop to entry, letting "
+                         "the remainder run to the --rr target (a win therefore "
+                         "pays frac*1R + (1-frac)*rr, an entry stop-out pays "
+                         "frac*1R)")
+    ap.add_argument("--partial-frac", type=float, default=0.5,
+                    help="fraction closed at +1R with --partial-at-1r (default 0.5)")
     ap.add_argument("--breakeven", action="store_true",
                     help="when price reaches +1R in favour, move the stop to "
                          "entry (never armed on the entry candle; a bar that "
@@ -630,7 +674,7 @@ def main():
     for pair in PAIRS:
         trades = run_pair(pair, cfg)
         all_trades.extend(trades)
-        print(f"{pair}: {sum(1 for t in trades if t.result in ('win', 'loss', 'scratch'))} closed trades")
+        print(f"{pair}: {sum(1 for t in trades if t.result in ('win', 'loss', 'scratch', 'partial'))} closed trades")
 
     summary, curve = run_portfolio(all_trades, cfg)
     write_outputs(all_trades, summary, curve, cfg.out)
@@ -639,12 +683,14 @@ def main():
     print(f"Total trades:   {summary['total_trades']}"
           f"  (wins {summary['wins']} / losses {summary['losses']}"
           f" / scratches {summary['scratches']}"
+          f"{' / partials ' + str(summary['partials']) if summary['partials'] else ''}"
           f", open at end: {summary['open_at_end']})")
     print(f"Win rate:       {summary['win_rate_pct']}%")
     print(f"Profit factor:  {summary['profit_factor']}")
     print(f"Net return:     {summary['net_return_pct']}%  "
           f"(final equity {summary['final_equity']:,.2f})")
     print(f"Max drawdown:   {summary['max_drawdown_pct']}%")
+    print(f"Avg R / trade:  {summary['avg_r']}  (total {summary['total_r']}R)")
     print(f"Ambiguous bars (counted as per conservative rules): {summary['ambiguous_bars']}")
     if "breakeven_mechanics" in summary:
         m = summary["breakeven_mechanics"]
