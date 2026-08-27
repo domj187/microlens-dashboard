@@ -8,6 +8,10 @@ python3 backtest/backtest.py --out backtest/results/origin-swing
 python3 backtest/backtest.py --sl-mode broken-level --out backtest/results/broken-level
 python3 backtest/backtest.py --rr 1.8 --out backtest/results/origin-swing-rr1.8
 python3 backtest/backtest.py --breakeven --out backtest/results/origin-swing-be
+python3 backtest/backtest.py --warmup-swings 10 --min-break-pips 5 \
+    --out backtest/results/origin-swing-filtered
+python3 backtest/backtest.py --warmup-swings 10 --min-break-pips 5 \
+    --trend-mode hhll --out backtest/results/origin-swing-hhll
 ```
 
 Stdlib only, no packages needed. Committed results live in
@@ -60,6 +64,16 @@ each directory contains:
    shows, for each scratched trade, whether it would have hit TP or SL
    without the rule (shadow-simulated with the original stop), and
    `summary.json` gains a `breakeven_mechanics` block with the totals.
+9. **Bias filters** (optional) — `--warmup-swings N` suppresses all signals
+   on a timeframe (bias state on Daily/8H, BOS setups on 4H) until it has
+   confirmed N fractal swings in total, so no trend is declared off the
+   thin structure at the start of the data. `--min-break-pips X` requires a
+   Daily/8H close to clear the swing level by at least X pips before the
+   trend state flips. `--trend-mode hhll` tightens the trend definition:
+   bull needs the close-break of the last confirmed swing high AND a
+   higher low behind it (last confirmed swing low above the previous one),
+   bear the mirror image; an unqualified break against the current state
+   demotes it to no-trend instead of reversing it.
 
 ## No look-ahead bias
 

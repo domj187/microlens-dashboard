@@ -142,17 +142,32 @@ def is_swing(candles: list[Candle], i: int, n: int, kind: str) -> bool:
 class TrendTracker:
     """Market-structure trend on one timeframe (used for Daily and 8H bias).
 
-    Bullish once a candle closes above the most recent confirmed swing high;
-    bearish once a candle closes below the most recent confirmed swing low.
-    The state holds until broken the other way.
+    Default mode ("break"): bullish once a candle closes above the most
+    recent confirmed swing high, bearish once one closes below the most
+    recent confirmed swing low; the state holds until broken the other way.
+
+    Mode "hhll": a break only sets the trend when the opposite structure
+    agrees — bull needs the close-break of the last swing high AND a higher
+    low behind it (last confirmed swing low above the previous one); bear
+    needs the break of the last swing low AND a lower high behind it. An
+    unqualified break against the current state demotes it to no-trend.
+
+    warmup_swings: no state is ever set until the timeframe has confirmed
+    that many fractal swings in total (highs + lows).
+    min_break: a break only counts if the close clears the level by at
+    least this distance (in price units).
     """
 
-    def __init__(self, candles: list[Candle], n: int):
+    def __init__(self, candles: list[Candle], n: int,
+                 warmup_swings: int = 0, min_break: float = 0.0, mode: str = "break"):
         self.candles = candles
         self.n = n
+        self.warmup = warmup_swings
+        self.min_break = min_break
+        self.mode = mode
         self.i = 0                      # next candle index to ingest
-        self.last_high: Swing | None = None
-        self.last_low: Swing | None = None
+        self.highs: list[Swing] = []    # confirmed, chronological
+        self.lows: list[Swing] = []
         self.state: str | None = None   # None / "bull" / "bear"
 
     def advance_to(self, t: datetime) -> None:
@@ -164,19 +179,37 @@ class TrendTracker:
             j = i - self.n
             if j >= 0:
                 if is_swing(cs, j, self.n, "H"):
-                    self.last_high = Swing("H", cs[j].open_time, cs[j].h, cs[i].close_time)
+                    self.highs.append(Swing("H", cs[j].open_time, cs[j].h, cs[i].close_time))
                 if is_swing(cs, j, self.n, "L"):
-                    self.last_low = Swing("L", cs[j].open_time, cs[j].l, cs[i].close_time)
+                    self.lows.append(Swing("L", cs[j].open_time, cs[j].l, cs[i].close_time))
             c = cs[i]
-            bull = self.last_high is not None and c.c > self.last_high.price
-            bear = self.last_low is not None and c.c < self.last_low.price
-            if bull and bear:  # freak candle breaking both: use candle direction
-                self.state = "bull" if c.c >= c.o else "bear"
-            elif bull:
-                self.state = "bull"
-            elif bear:
-                self.state = "bear"
             self.i += 1
+            if self.warmup and len(self.highs) + len(self.lows) < self.warmup:
+                continue
+            up_brk = bool(self.highs) and c.c > self.highs[-1].price + self.min_break
+            dn_brk = bool(self.lows) and c.c < self.lows[-1].price - self.min_break
+            if self.mode == "hhll":
+                higher_low = len(self.lows) >= 2 and self.lows[-1].price > self.lows[-2].price
+                lower_high = len(self.highs) >= 2 and self.highs[-1].price < self.highs[-2].price
+                bull = up_brk and higher_low
+                bear = dn_brk and lower_high
+                if bull and bear:  # freak candle: use candle direction
+                    self.state = "bull" if c.c >= c.o else "bear"
+                elif bull:
+                    self.state = "bull"
+                elif bear:
+                    self.state = "bear"
+                elif up_brk and self.state == "bear":
+                    self.state = None  # structure damaged, not yet reversed
+                elif dn_brk and self.state == "bull":
+                    self.state = None
+            else:
+                if up_brk and dn_brk:  # freak candle breaking both
+                    self.state = "bull" if c.c >= c.o else "bear"
+                elif up_brk:
+                    self.state = "bull"
+                elif dn_brk:
+                    self.state = "bear"
 
 
 class StructureTracker:
@@ -245,8 +278,11 @@ class StructureTracker:
 def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
     h1 = load_candles(pair, "60")
     h4 = StructureTracker(load_candles(pair, "240"), cfg.swing_n)
-    h8 = TrendTracker(load_candles(pair, "480"), cfg.swing_n)
-    d1 = TrendTracker(load_candles(pair, "1D"), cfg.swing_n)
+    min_break = cfg.min_break_pips * PIP
+    h8 = TrendTracker(load_candles(pair, "480"), cfg.swing_n,
+                      cfg.warmup_swings, min_break, cfg.trend_mode)
+    d1 = TrendTracker(load_candles(pair, "1D"), cfg.swing_n,
+                      cfg.warmup_swings, min_break, cfg.trend_mode)
 
     buffer = cfg.sl_buffer_pips * PIP
     trades: list[Trade] = []
@@ -341,7 +377,9 @@ def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
 
         # ---- 3) BOS detection on this 1H close
         broken_high, broken_low = h4.mark_breaks(c.c)
-        if pos is None:
+        if cfg.warmup_swings and len(h4.highs) + len(h4.lows) < cfg.warmup_swings:
+            pass  # 4H structure still warming up: no setups
+        elif pos is None:
             if bias == "long" and broken_high is not None:
                 origin = h4.latest_low()
                 if origin is not None and origin.price < broken_high.price:
@@ -428,7 +466,8 @@ def run_portfolio(all_trades: list[Trade], cfg: argparse.Namespace):
             "swing_n": cfg.swing_n, "retest_window_bars": cfg.retest_window,
             "sl_mode": cfg.sl_mode, "sl_buffer_pips": cfg.sl_buffer_pips,
             "rr": cfg.rr, "risk_pct": cfg.risk_pct, "start_equity": cfg.start_equity,
-            "breakeven": cfg.breakeven,
+            "breakeven": cfg.breakeven, "warmup_swings": cfg.warmup_swings,
+            "min_break_pips": cfg.min_break_pips, "trend_mode": cfg.trend_mode,
         },
         "total_trades": len(closed),
         "wins": len(wins),
@@ -563,6 +602,20 @@ def main():
     ap.add_argument("--sl-buffer-pips", type=float, default=1.0,
                     help="'just beyond' buffer in pips (default 1)")
     ap.add_argument("--rr", type=float, default=2.0, help="reward:risk (default 2)")
+    ap.add_argument("--warmup-swings", type=int, default=0,
+                    help="skip all signals on a timeframe (bias state on D/8H, "
+                         "BOS setups on 4H) until it has confirmed this many "
+                         "fractal swings in total (default 0 = off)")
+    ap.add_argument("--min-break-pips", type=float, default=0.0,
+                    help="a D/8H structure break only flips the trend state if "
+                         "the close clears the swing level by at least this many "
+                         "pips (default 0 = off)")
+    ap.add_argument("--trend-mode", choices=["break", "hhll"], default="break",
+                    help="break: any close-break of the last confirmed swing "
+                         "flips the D/8H trend (default). hhll: bull needs the "
+                         "break AND a higher low behind it, bear needs the break "
+                         "AND a lower high; an unqualified counter-break demotes "
+                         "the state to no-trend.")
     ap.add_argument("--breakeven", action="store_true",
                     help="when price reaches +1R in favour, move the stop to "
                          "entry (never armed on the entry candle; a bar that "

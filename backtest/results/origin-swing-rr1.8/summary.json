@@ -12,11 +12,16 @@
     "sl_buffer_pips": 1.0,
     "rr": 1.8,
     "risk_pct": 1.0,
-    "start_equity": 10000.0
+    "start_equity": 10000.0,
+    "breakeven": false,
+    "warmup_swings": 0,
+    "min_break_pips": 0.0,
+    "trend_mode": "break"
   },
   "total_trades": 168,
   "wins": 56,
   "losses": 112,
+  "scratches": 0,
   "open_at_end": 4,
   "ambiguous_bars": 0,
   "win_rate_pct": 33.33,
