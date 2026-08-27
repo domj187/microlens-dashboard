@@ -1,0 +1,3 @@
+signal_time_utc,entry_date_utc,exit_date_utc,pair,direction,taken,reason,entry,sl,tp,result,r_multiple,notes
+2026-08-24 13:00,2026-08-24 14:00,2026-08-26 08:00,EURUSD,short,yes,"D+8H both bearish, clean 4H BOS, retest held",1.16240,1.16720,1.15280,win,2.0,"textbook retest, no news in window"
+2026-08-25 09:00,,,AUDUSD,long,no,"8H bias unclear - last swing low never closed through",0.65100,0.64720,0.65860,skipped-would-loss,-1.0,"system would have taken it; price stopped out next session"

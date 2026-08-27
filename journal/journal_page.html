@@ -1,0 +1,369 @@
+<title>Setup Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<div id="app"></div>
+<script>
+const CSS = `
+:root{
+  --ground:#f6f5f1; --surface:#fffdfa; --sunk:#efede7; --line:#e2dfd7; --rule:#eeebe4;
+  --ink:#15171a; --ink-2:#54565a; --ink-3:#8a8b86;
+  --taken:#0f6d68; --taken-soft:rgba(15,109,104,.10);
+  --skip:#8a5d00; --skip-soft:rgba(138,93,0,.10);
+  --good:#0d7a3f; --bad:#b0322f; --good-soft:rgba(13,122,63,.10); --bad-soft:rgba(176,50,47,.10);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#15161a; --surface:#1d1f23; --sunk:#212429; --line:#31343a; --rule:#292c31;
+    --ink:#f2f1ec; --ink-2:#b3b4b0; --ink-3:#7e807c;
+    --taken:#43aaa2; --taken-soft:rgba(67,170,162,.14);
+    --skip:#cf9d33; --skip-soft:rgba(207,157,51,.14);
+    --good:#54b06c; --bad:#e07370; --good-soft:rgba(84,176,108,.14); --bad-soft:rgba(224,115,112,.14);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#15161a; --surface:#1d1f23; --sunk:#212429; --line:#31343a; --rule:#292c31;
+  --ink:#f2f1ec; --ink-2:#b3b4b0; --ink-3:#7e807c;
+  --taken:#43aaa2; --taken-soft:rgba(67,170,162,.14);
+  --skip:#cf9d33; --skip-soft:rgba(207,157,51,.14);
+  --good:#54b06c; --bad:#e07370; --good-soft:rgba(84,176,108,.14); --bad-soft:rgba(224,115,112,.14);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);
+  font:15px/1.55 "IBM Plex Sans",system-ui,-apple-system,sans-serif;}
+.wrap{max-width:1080px;margin:0 auto;padding:36px 22px 80px;display:flex;flex-direction:column;gap:30px}
+h1{font-size:25px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px;text-wrap:balance}
+.sub{color:var(--ink-2);margin:0;max-width:62ch}
+h2{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);margin:0 0 12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+label{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);margin-bottom:5px;font-weight:600}
+input,select,textarea{width:100%;font:14px "IBM Plex Sans",sans-serif;color:var(--ink);
+  background:var(--ground);border:1px solid var(--line);border-radius:6px;padding:8px 9px}
+input.mono,select.mono{font-family:"IBM Plex Mono",monospace;font-size:13.5px}
+textarea{resize:vertical;min-height:38px}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--taken);outline-offset:1px}
+.grid{display:grid;gap:14px 12px}
+.g-when{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.g-what{grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}
+.g-lvl{grid-template-columns:repeat(auto-fit,minmax(110px,1fr))}
+.formsec{border-top:1px dashed var(--line);padding-top:16px;margin-top:16px}
+.formsec:first-of-type{border-top:none;padding-top:0;margin-top:0}
+.seclab{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-3);font-weight:600;margin-bottom:10px}
+button{font:500 13.5px "IBM Plex Sans",sans-serif;border-radius:6px;border:1px solid var(--line);
+  background:var(--surface);color:var(--ink);padding:8px 14px;cursor:pointer}
+button:hover{border-color:var(--ink-3)}
+button.primary{background:var(--taken);border-color:var(--taken);color:#fff;font-weight:600}
+button.primary:hover{filter:brightness(1.08)}
+button.mini{padding:4px 8px;font-size:12px}
+button.danger:hover{border-color:var(--bad);color:var(--bad)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.actions{margin-top:18px;justify-content:flex-end}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:10px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.stat .k{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);margin-bottom:5px}
+.stat .v{font:500 21px/1.1 "IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+.stat .n{font-size:11.5px;color:var(--ink-3);margin-top:3px}
+.pos{color:var(--good)}.neg{color:var(--bad)}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);font-weight:600;
+  text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid var(--rule);font-size:13.5px;vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+td.mono,th.num{font-family:"IBM Plex Mono",monospace;font-size:12.5px}
+th.num,td.num{text-align:right}
+tr.taken td:first-child{box-shadow:inset 3px 0 0 var(--taken)}
+tr.skipped td:first-child{box-shadow:inset 3px 0 0 var(--skip)}
+.pill{display:inline-block;font:500 11px/1 "IBM Plex Sans",sans-serif;padding:4px 8px;border-radius:999px;white-space:nowrap}
+.p-win{background:var(--good-soft);color:var(--good)}
+.p-loss{background:var(--bad-soft);color:var(--bad)}
+.p-partial{background:var(--taken-soft);color:var(--taken)}
+.p-scratch,.p-open{border:1px solid var(--line);color:var(--ink-3)}
+.p-would{background:var(--skip-soft);color:var(--skip)}
+.p-long{background:var(--taken-soft);color:var(--taken)}
+.p-short{border:1px solid var(--line);color:var(--ink-2)}
+.reason{color:var(--ink-2);font-size:12.5px;max-width:34ch}
+.empty{padding:34px 20px;text-align:center;color:var(--ink-3)}
+.note{font-size:12.5px;color:var(--ink-3)}
+.banner{border-radius:8px;padding:10px 13px;font-size:13px;border:1px solid var(--line);background:var(--sunk);color:var(--ink-2)}
+.banner.warn{border-color:var(--skip);background:var(--skip-soft);color:var(--skip)}
+code{font:12px "IBM Plex Mono",monospace;background:var(--sunk);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+pre{margin:0;overflow-x:auto;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:12px;font:12px/1.6 "IBM Plex Mono",monospace}
+.map{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px 22px;font-size:13px;color:var(--ink-2)}
+.map b{color:var(--ink);font-weight:500}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.chip{font:12px "IBM Plex Sans",sans-serif;color:var(--ink-2);background:var(--ground);
+  border:1px solid var(--line);border-radius:999px;padding:4px 10px;cursor:pointer}
+.chip:hover{border-color:var(--taken);color:var(--taken)}
+ul.rules{margin:0;padding-left:18px;color:var(--ink-2);font-size:13.5px}
+ul.rules li{margin-bottom:5px}
+@media (prefers-reduced-motion:no-preference){button,.chip{transition:border-color .13s,color .13s,filter .13s}}
+`;
+
+const STATE = {"entries":[]};
+
+function APP(){
+  const PAIRS=["AUDCHF","AUDUSD","EURCHF","EURUSD"];
+  const RES=[["open","Open / running"],["win","Win"],["loss","Loss"],["partial","Partial (banked 1R, stopped at entry)"],["scratch","Scratch (breakeven)"],
+             ["skipped-would-win","Skipped — would have won"],["skipped-would-loss","Skipped — would have lost"],["skipped-would-scratch","Skipped — would have scratched"]];
+  const RDEF={win:"2",loss:"-1",partial:"0.5",scratch:"0",open:"","skipped-would-win":"2","skipped-would-loss":"-1","skipped-would-scratch":"0"};
+  const COLS=["signal_time_utc","entry_date_utc","exit_date_utc","pair","direction","taken","reason","entry","sl","tp","result","r_multiple","notes"];
+  const LS="setup-ledger-v1";
+
+  let entries=(STATE.entries||[]).slice();
+  let mode="loading", api=null, dl=null, busy=false;
+
+  try{ const raw=localStorage.getItem(LS); if(raw){ const j=JSON.parse(raw);
+    if(Array.isArray(j)&&j.length>entries.length) entries=j; } }catch(e){}
+
+  const $=(s,r)=>(r||document).querySelector(s);
+  const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const num=v=>{const n=parseFloat(v);return isFinite(n)?n:0;};
+  const isTaken=e=>String(e.taken).toLowerCase()==="yes";
+  const isSkipRes=r=>String(r||"").indexOf("skipped-would-")===0;
+  const nowUTC=()=>{const d=new Date();d.setUTCMinutes(0,0,0);return d.toISOString().slice(0,16).replace("T"," ");};
+
+  function style(){ if(!document.getElementById("ledger-css")){
+    const st=document.createElement("style"); st.id="ledger-css"; st.textContent=CSS; document.head.appendChild(st);} }
+
+  function backup(){ try{ localStorage.setItem(LS,JSON.stringify(entries)); }catch(e){} }
+
+  function buildDoc(){
+    return '<!doctype html><html lang="en"><head><meta charset="utf-8">'
+      +'<meta name="viewport" content="width=device-width,initial-scale=1">'
+      +'<title>Setup Ledger</title>'
+      +'<link rel="preconnect" href="https://fonts.googleapis.com">'
+      +'<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">'
+      +'<style>'+CSS+'</style></head><body><div id="app"></div><script>\n'
+      +'const CSS = '+JSON.stringify(CSS)+';\n'
+      +'const STATE = '+JSON.stringify({entries:entries})+';\n'
+      +'('+APP.toString()+')();\n'
+      +'<\/script></body></html>';
+  }
+
+  async function save(msg){
+    backup();
+    if(mode==="artifact"&&api){
+      busy=true; render(msg||"Saving…");
+      try{ await api.publish(buildDoc()); }
+      catch(err){
+        busy=false;
+        const c=err&&err.code;
+        if(c==="conflict") return;                       // the view reloads to the winner
+        if(c==="not_writer"||c==="not_granted"||c==="not_declared"){ mode="local"; render(); return; }
+        render(c==="too_large"?"Too many entries to save on the page — export the CSV and start a fresh ledger."
+              :c==="rate_limited"?"Saving too fast — wait a moment and try again."
+              :"Could not save to the page. Your entries are still in this browser — export the CSV to be safe.");
+        return;
+      }
+    } else { render(); }
+  }
+
+  function stats(){
+    const taken=entries.filter(isTaken), skipped=entries.filter(e=>!isTaken(e));
+    const decided=taken.filter(e=>e.result&&e.result!=="open");
+    const wins=decided.filter(e=>num(e.r_multiple)>0).length;
+    const totR=decided.reduce((a,e)=>a+num(e.r_multiple),0);
+    const skipR=skipped.filter(e=>isSkipRes(e.result)).reduce((a,e)=>a+num(e.r_multiple),0);
+    return{logged:entries.length,taken:taken.length,skipped:skipped.length,decided:decided.length,wins:wins,
+      wr:decided.length?100*wins/decided.length:null,avg:decided.length?totR/decided.length:null,tot:totR,skipR:skipR,
+      skipN:skipped.filter(e=>isSkipRes(e.result)).length,open:taken.filter(e=>!e.result||e.result==="open").length};
+  }
+
+  function toCSV(){
+    const q=v=>{v=v==null?"":String(v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
+    return [COLS.join(",")].concat(entries.map(e=>COLS.map(c=>q(e[c])).join(","))).join("\n")+"\n";
+  }
+
+  function resPill(e){
+    const r=e.result||"open";
+    const cls=isSkipRes(r)?"p-would":("p-"+r);
+    const txt=isSkipRes(r)?("would "+r.replace("skipped-would-","")):r;
+    return '<span class="pill '+cls+'">'+esc(txt)+'</span>';
+  }
+
+  function render(msg){
+    style();
+    const s=stats();
+    const rows=entries.map((e,i)=>{
+      const r=num(e.r_multiple), dec=e.result&&e.result!=="open";
+      return '<tr class="'+(isTaken(e)?"taken":"skipped")+'">'
+        +'<td class="mono">'+esc(e.signal_time_utc||e.entry_date_utc||"—")+'</td>'
+        +'<td>'+esc(e.pair||"")+'</td>'
+        +'<td><span class="pill p-'+esc(e.direction||"long")+'">'+esc(e.direction||"")+'</span></td>'
+        +'<td>'+(isTaken(e)?'<span class="pill p-partial">taken</span>':'<span class="pill p-would">skipped</span>')+'</td>'
+        +'<td class="reason">'+esc(e.reason||"")+(e.notes?'<br><span class="note">'+esc(e.notes)+'</span>':'')+'</td>'
+        +'<td class="mono num">'+esc(e.entry||"")+'</td><td class="mono num">'+esc(e.sl||"")+'</td><td class="mono num">'+esc(e.tp||"")+'</td>'
+        +'<td>'+resPill(e)+'</td>'
+        +'<td class="mono num '+(dec?(r>0?"pos":r<0?"neg":""):"")+'">'+(dec&&e.r_multiple!==""?(r>0?"+":"")+r:"—")+'</td>'
+        +'<td class="num"><button class="mini danger" data-del="'+i+'">Delete</button></td></tr>';
+    }).join("");
+
+    const banner = mode==="local"
+      ? '<div class="banner warn">Saved in this browser only — this view can’t write to the page, so entries won’t follow you to another device. Export the CSV to keep them.</div>'
+      : msg ? '<div class="banner">'+esc(msg)+'</div>' : '';
+
+    $("#app").innerHTML='<div class="wrap">'
+      +'<header><h1>Setup Ledger</h1><p class="sub">Log every setup you see — taken <em>and</em> skipped — in the same shape the backtester emits, '
+      +'so your live decisions can be measured against what the system would have done.</p></header>'
+      +(banner?'<div>'+banner+'</div>':'')
+
+      +'<section><h2>Log a setup</h2><div class="card"><form id="f">'
+        +'<div class="formsec"><div class="seclab">When</div><div class="grid g-when">'
+          +'<div><label for="i-sig">Signal time (1H BOS close, UTC)</label><input class="mono" id="i-sig" name="signal_time_utc" placeholder="2026-08-27 13:00"></div>'
+          +'<div><label for="i-ent">Entry filled (UTC)</label><input class="mono" id="i-ent" name="entry_date_utc" placeholder="blank if skipped"></div>'
+          +'<div><label for="i-exi">Exit (UTC)</label><input class="mono" id="i-exi" name="exit_date_utc" placeholder="blank while open"></div>'
+        +'</div><div class="chips"><span class="chip" data-now="i-sig">Signal = now</span><span class="chip" data-now="i-ent">Entry = now</span><span class="chip" data-now="i-exi">Exit = now</span></div></div>'
+
+        +'<div class="formsec"><div class="seclab">What</div><div class="grid g-what">'
+          +'<div><label for="i-pair">Pair</label><select class="mono" id="i-pair" name="pair">'+PAIRS.map(p=>'<option>'+p+'</option>').join("")+'</select></div>'
+          +'<div><label for="i-dir">Direction</label><select id="i-dir" name="direction"><option value="long">long</option><option value="short">short</option></select></div>'
+          +'<div><label for="i-tak">Decision</label><select id="i-tak" name="taken"><option value="yes">Taken</option><option value="no">Skipped</option></select></div>'
+          +'<div><label for="i-res">Outcome</label><select id="i-res" name="result">'+RES.map(r=>'<option value="'+r[0]+'">'+r[1]+'</option>').join("")+'</select></div>'
+        +'</div></div>'
+
+        +'<div class="formsec"><div class="seclab">Levels</div><div class="grid g-lvl">'
+          +'<div><label for="i-e">Entry</label><input class="mono" id="i-e" name="entry" inputmode="decimal" placeholder="1.16240"></div>'
+          +'<div><label for="i-s">Stop loss</label><input class="mono" id="i-s" name="sl" inputmode="decimal" placeholder="1.16720"></div>'
+          +'<div><label for="i-t">Take profit</label><input class="mono" id="i-t" name="tp" inputmode="decimal" placeholder="1.15280"></div>'
+          +'<div><label for="i-r">R result</label><input class="mono" id="i-r" name="r_multiple" inputmode="decimal" placeholder="auto"></div>'
+        +'</div><p class="note" style="margin:8px 0 0">R fills in from the outcome (+2 win, −1 loss, +0.5 partial, 0 scratch). Overwrite it if you closed early or scaled differently.</p></div>'
+
+        +'<div class="formsec"><div class="seclab">Why</div>'
+          +'<div><label for="i-why">Reason for taking it / passing on it</label><textarea id="i-why" name="reason" placeholder="D and 8H both bearish, clean 4H BOS, retest held"></textarea>'
+          +'<div class="chips">'+["D+8H aligned, clean BOS","Retest held on the 1H close","Bias unclear on 8H","Retest never came","Stop too wide for the level","High-impact news inside the window","Missed the fill","Broke my own rules"].map(t=>'<span class="chip" data-why="'+esc(t)+'">'+esc(t)+'</span>').join("")+'</div></div>'
+          +'<div style="margin-top:12px"><label for="i-note">Notes</label><textarea id="i-note" name="notes" placeholder="execution quality, emotion, anything worth reviewing later"></textarea></div>'
+        +'</div>'
+        +'<div class="row actions"><button type="reset">Clear</button><button class="primary" type="submit"'+(busy?" disabled":"")+'>'+(busy?"Saving…":"Add to ledger")+'</button></div>'
+      +'</form></div></section>'
+
+      +'<section><h2>Running totals</h2><div class="stats">'
+        +st("Setups logged",s.logged,s.taken+" taken · "+s.skipped+" skipped")
+        +st("Decided",s.decided,s.open?s.open+" still open":"all closed")
+        +st("Win rate",s.wr==null?"—":s.wr.toFixed(1)+"%",s.wins+" of "+s.decided+" taken")
+        +st("Avg R",s.avg==null?"—":(s.avg>0?"+":"")+s.avg.toFixed(3),"per decided trade",s.avg)
+        +st("Total R",(s.tot>0?"+":"")+s.tot.toFixed(2),"your taken trades",s.tot)
+        +st("Passed on",(s.skipR>0?"+":"")+s.skipR.toFixed(2)+"R",s.skipN+" scored skips",-s.skipR)
+      +'</div></section>'
+
+      +'<section><h2>The ledger</h2><div class="scroll">'
+        +(entries.length?'<table><thead><tr><th>Signal / entry</th><th>Pair</th><th>Dir</th><th>Decision</th><th>Reason</th>'
+          +'<th class="num">Entry</th><th class="num">SL</th><th class="num">TP</th><th>Outcome</th><th class="num">R</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
+          :'<div class="empty">No setups logged yet. Add the first one above — including the ones you pass on.</div>')
+      +'</div>'
+      +'<div class="row" style="margin-top:12px"><button id="csv"'+(entries.length?"":" disabled")+'>Download CSV</button>'
+        +'<button id="copy"'+(entries.length?"":" disabled")+'>Copy CSV</button>'
+        +'<span class="note" id="csvmsg"></span></div></section>'
+
+      +'<section><h2>Comparing against the system</h2><div class="card">'
+        +'<p class="sub" style="margin:0 0 14px">Nine columns carry the backtester’s own names, so the exported file lines up with any run in <code>backtest/results/</code>:</p>'
+        +'<div class="map">'
+          +'<div><b>entry_date_utc</b> · <b>exit_date_utc</b> — same format, UTC</div>'
+          +'<div><b>pair</b> · <b>direction</b> — same values</div>'
+          +'<div><b>entry</b> · <b>sl</b> · <b>tp</b> — same levels</div>'
+          +'<div><b>result</b> · <b>r_multiple</b> — same vocabulary</div>'
+          +'<div><b>signal_time_utc</b> → the backtester’s <b>bos_time_utc</b></div>'
+          +'<div><b>taken</b> · <b>reason</b> · <b>notes</b> — journal only: the decision under test</div>'
+        +'</div>'
+        +'<p class="sub" style="margin:16px 0 8px">Save the export as <code>journal/journal.csv</code>, then:</p>'
+        +'<pre>python3 journal/journal_compare.py \\\n    --journal journal/journal.csv \\\n    --trades backtest/results/origin-swing-partial/trades.csv</pre>'
+        +'<p class="note" style="margin:10px 0 0">It reports where you and the system agreed, the trades you took alone, and the R you left on the table by passing on signals.</p>'
+      +'</div></section>'
+
+      +'<section><h2>What the system would do</h2><div class="card"><ul class="rules">'
+        +'<li><b>Bias</b> — Daily and 8H market structure must both point the same way; otherwise stand aside.</li>'
+        +'<li><b>Structure</b> — 4H fractal swing highs and lows define the levels.</li>'
+        +'<li><b>Trigger</b> — a 1H candle <em>closes</em> beyond the most recent unbroken 4H swing in the bias direction.</li>'
+        +'<li><b>Entry</b> — limit at the broken level on the retest, within 24 hours of the break.</li>'
+        +'<li><b>Stop</b> — 1 pip beyond the opposite-side 4H swing the break came from.</li>'
+        +'<li><b>Target</b> — fixed 1:2 from the fill; half banked at +1R with the stop to entry, the rest runs to target.</li>'
+        +'<li><b>Risk</b> — 1% of equity per setup.</li>'
+      +'</ul><p class="note" style="margin:12px 0 0">Logging a skip is worth as much as logging a trade: '
+      +'a passed setup with no row is a decision that can never be scored.</p></div></section>'
+    +'</div>';
+
+    wire();
+  }
+
+  function st(k,v,n,sign){
+    const cls=sign===undefined?"":(sign>0?" pos":sign<0?" neg":"");
+    return '<div class="stat"><div class="k">'+k+'</div><div class="v'+cls+'">'+v+'</div><div class="n">'+n+'</div></div>';
+  }
+
+  function wire(){
+    const f=$("#f"); if(!f) return;
+    const tak=$("#i-tak"), res=$("#i-res"), rin=$("#i-r");
+
+    function syncOutcome(){
+      const skip=tak.value==="no";
+      Array.prototype.forEach.call(res.options,o=>{
+        const so=o.value.indexOf("skipped-would-")===0;
+        o.hidden = skip ? (!so && o.value!=="open") : so;
+      });
+      if(skip && res.value.indexOf("skipped-would-")!==0 && res.value!=="open") res.value="skipped-would-loss";
+      if(!skip && res.value.indexOf("skipped-would-")===0) res.value="open";
+      autoR();
+    }
+    function autoR(){ if(!rin.dataset.touched) rin.value=RDEF[res.value]!==undefined?RDEF[res.value]:""; }
+    rin.addEventListener("input",()=>{rin.dataset.touched="1";});
+    tak.addEventListener("change",syncOutcome);
+    res.addEventListener("change",autoR);
+    syncOutcome();
+
+    document.querySelectorAll("[data-now]").forEach(c=>c.addEventListener("click",()=>{
+      const el=document.getElementById(c.dataset.now); el.value=nowUTC(); el.focus();
+    }));
+    document.querySelectorAll("[data-why]").forEach(c=>c.addEventListener("click",()=>{
+      const w=$("#i-why"); w.value=w.value?w.value.replace(/\s*$/,"")+"; "+c.dataset.why:c.dataset.why;
+    }));
+    document.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",()=>{
+      const i=+b.dataset.del, e=entries[i];
+      if(!confirm("Delete the "+(e.pair||"")+" "+(e.direction||"")+" entry from "+(e.signal_time_utc||e.entry_date_utc||"this row")+"?")) return;
+      entries.splice(i,1); save("Entry deleted.");
+    }));
+
+    f.addEventListener("submit",ev=>{
+      ev.preventDefault();
+      if(busy) return;
+      const d=new FormData(f), e={};
+      COLS.forEach(c=>{e[c]=(d.get(c)||"").toString().trim();});
+      if(!e.signal_time_utc&&!e.entry_date_utc){ alert("Give the setup a time — signal time, or the entry fill."); return; }
+      if(e.taken==="yes"&&!e.entry_date_utc&&e.result!=="open"){
+        if(!confirm("This is marked taken but has no entry time. Add it anyway?")) return;
+      }
+      entries.push(e);
+      entries.sort((a,b)=>{
+        const ka=(a.signal_time_utc||a.entry_date_utc||""), kb=(b.signal_time_utc||b.entry_date_utc||"");
+        return ka<kb?-1:ka>kb?1:0;
+      });
+      save("Logged.");
+    });
+
+    const csv=$("#csv"); if(csv) csv.addEventListener("click",async()=>{
+      const name="trade-journal-"+new Date().toISOString().slice(0,10)+".csv";
+      if(dl){ try{ await dl.save({filename:name,data:toCSV()}); $("#csvmsg").textContent="Saved."; return; }
+        catch(err){ if(err&&err.code==="declined"){$("#csvmsg").textContent="";return;} } }
+      try{ await navigator.clipboard.writeText(toCSV());
+        $("#csvmsg").textContent="Downloads aren’t available here — the CSV is on your clipboard instead.";
+      }catch(e2){ $("#csvmsg").textContent="Downloads aren’t available here — use Copy CSV."; }
+    });
+    const cp=$("#copy"); if(cp) cp.addEventListener("click",async()=>{
+      try{ await navigator.clipboard.writeText(toCSV()); $("#csvmsg").textContent="CSV copied — paste into journal/journal.csv."; }
+      catch(e){ $("#csvmsg").textContent="Couldn’t reach the clipboard. Select the table and copy manually."; }
+    });
+  }
+
+  render();
+
+  if(window.claude&&claude.use){
+    claude.use("artifact").then(a=>{ api=a; mode=a?"artifact":"local"; if(!busy) render(); })
+      .catch(()=>{mode="local";render();});
+    claude.use("downloads").then(d=>{dl=d;}).catch(()=>{});
+  } else { mode="local"; render(); }
+}
+
+APP();
+</script>
