@@ -1,3 +1,6 @@
 data/raw/
 __pycache__/
 journal/journal.csv
+data/raw_oanda/
+data_bid/
+data_ask/

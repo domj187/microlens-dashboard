@@ -287,32 +287,40 @@ def main():
     print(f"Data range: {r0['range'][0]} to {r0['range'][1]}   "
           f"({len(pairs)} pairs, 4H fractal n={cfg.swing_n})\n")
 
+    def f(v, w, dec=1, suffix=""):
+        return ("—" if v is None else f"{v:.{dec}f}{suffix}").rjust(w)
+
     print("4H SWING STRUCTURE")
     print(f"  {'pair':<9}{'legs':>6}{'median':>9}{'mean':>8}{'x ATR':>8}")
     for r in results:
-        print(f"  {r['pair']:<9}{r['swing_legs']:>6}{r['swing_median_pips']:>8.1f}p"
-              f"{r['swing_mean_pips']:>7.1f}p{r['swing_atr_median']:>8.2f}")
+        print(f"  {r['pair']:<9}{r['swing_legs']:>6}{f(r['swing_median_pips'],9,1,'p')}"
+              f"{f(r['swing_mean_pips'],8,1,'p')}{f(r['swing_atr_median'],8,2)}")
 
     print("\nBREAK OF STRUCTURE — what happens next")
     print(f"  {'pair':<9}{'breaks':>7}{'2x depth':>10}{'reversal':>10}{'open':>7}"
           f"{'vs 33.3%':>10}{'retest':>8}")
     for r in results:
-        print(f"  {r['pair']:<9}{r['breaks']:>7}{r['followthrough_pct']:>9.1f}%"
-              f"{r['reversal_pct']:>9.1f}%{r['unresolved_pct']:>6.1f}%"
-              f"{r['edge_vs_random_pp']:>+9.1f}p{r['retest_pct']:>7.1f}%")
+        print(f"  {r['pair']:<9}{r['breaks']:>7}{f(r['followthrough_pct'],10,1,'%')}"
+              f"{f(r['reversal_pct'],10,1,'%')}{f(r['unresolved_pct'],7,1,'%')}"
+              f"{('—' if r['edge_vs_random_pp'] is None else format(r['edge_vs_random_pp'],'+.1f')+'p').rjust(10)}"
+              f"{f(r['retest_pct'],8,1,'%')}")
     print("  (33.3% is the no-edge baseline: target 2x depth away, invalidation 1x away)")
 
     print("\nDAILY TREND PERSISTENCE (bars before the state flips)")
     print(f"  {'pair':<9}{'flips':>7}{'median':>9}{'mean':>8}")
     for r in results:
-        print(f"  {r['pair']:<9}{r['daily_runs']:>7}{r['daily_persistence_median']:>8.1f}d"
-              f"{r['daily_persistence_mean']:>7.1f}d")
+        print(f"  {r['pair']:<9}{r['daily_runs']:>7}{f(r['daily_persistence_median'],9,1,'d')}"
+              f"{f(r['daily_persistence_mean'],8,1,'d')}")
 
     print("\nSPREAD")
     if any(r["spread_pips"] is not None for r in results):
         for r in results:
-            print(f"  {r['pair']:<9}{r['spread_pips']:>7.2f}p   "
-                  f"{r['spread_pct_of_swing']}% of a median swing")
+            if r["spread_pips"] is None:
+                print(f"  {r['pair']:<9}      —   no bid/ask files found")
+            else:
+                pct = ("" if r["spread_pct_of_swing"] is None
+                       else f"   {r['spread_pct_of_swing']}% of a median swing")
+                print(f"  {r['pair']:<9}{r['spread_pips']:>7.2f}p{pct}")
     else:
         print("  not measurable — data/ holds mid prices only. Rebuild bid and ask")
         print("  sets (scripts/fetch_dukascopy.py --price bid|ask) and pass")
