@@ -39,11 +39,7 @@ import os
 import statistics as stats
 from datetime import timedelta
 
-from backtest import load_candles, is_swing, DATA_DIR
-
-# JPY-quoted pairs move in 0.01 pips; everything else 0.0001.
-def pip_size(pair: str) -> float:
-    return 0.01 if pair.endswith("JPY") else 0.0001
+from backtest import load_candles, is_swing, pip_size, DATA_DIR
 
 
 def discover_pairs() -> list[str]:

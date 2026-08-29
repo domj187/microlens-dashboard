@@ -39,6 +39,17 @@ BASE = "https://datafeed.dukascopy.com/datafeed"
 # passes every OHLC sanity check, so it must be picked per pair.
 PRICE_SCALE_DEFAULT = 1e5
 PRICE_SCALE_JPY = 1e3
+# Metals are not FX and do not follow the 5/3-decimal rule. Dukascopy is
+# believed to serve XAUUSD scaled by 1e3, but that is NOT verified here
+# (the feed is unreachable from this environment), so it is stated openly
+# and guarded: sanity_prices() rejects an implausible result at fetch time,
+# and --price-scale overrides the table if the feed disagrees.
+PRICE_SCALE_TABLE = {"XAUUSD": 1e3, "XAGUSD": 1e3}
+
+# Plausible median price per instrument, used to catch a wrong scale before
+# the data reaches disk. Wide enough to never fire on real data, tight
+# enough that a 10x or 100x scale error always trips it.
+PLAUSIBLE = {"XAUUSD": (500, 10000), "XAGUSD": (5, 200)}
 RECORD = struct.Struct(">iiiiif")  # time_offset, open, close, low, high, volume
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -89,12 +100,22 @@ def fetch_month(pair, year, month, side):
     return data
 
 
-def price_scale(pair):
-    """Integer price scale for a pair (JPY-quoted pairs use 3 decimals)."""
-    return PRICE_SCALE_JPY if pair[3:].upper() == "JPY" else PRICE_SCALE_DEFAULT
+def price_scale(pair, override=None):
+    """Integer price scale for an instrument.
+
+    FX majors are stored to 5 decimals, JPY crosses to 3; metals follow
+    their own convention (see PRICE_SCALE_TABLE). --price-scale wins over
+    everything when the feed turns out to disagree.
+    """
+    if override:
+        return float(override)
+    pair = pair.upper()
+    if pair in PRICE_SCALE_TABLE:
+        return PRICE_SCALE_TABLE[pair]
+    return PRICE_SCALE_JPY if pair[3:] == "JPY" else PRICE_SCALE_DEFAULT
 
 
-def parse_month(data, year, month, pair):
+def parse_month(data, year, month, pair, scale_override=None):
     """Parse a monthly bi5 into {utc_datetime: (o, h, l, c, volume)}."""
     if not data:
         return {}
@@ -102,7 +123,7 @@ def parse_month(data, year, month, pair):
     if len(raw) % RECORD.size:
         raise ValueError(f"corrupt bi5: {len(raw)} bytes not a multiple of {RECORD.size}")
     month_start = datetime(year, month, 1, tzinfo=UTC)
-    scale = price_scale(pair)
+    scale = price_scale(pair, scale_override)
     out = {}
     offsets = [RECORD.unpack_from(raw, i * RECORD.size)[0] for i in range(len(raw) // RECORD.size)]
     # offsets are seconds from month start; guard against a millisecond variant
@@ -188,10 +209,15 @@ def sanity_prices(rows, pair):
     if not rows:
         return []
     mid = sorted(r[4] for r in rows)[len(rows) // 2]
-    lo, hi = (10, 1000) if pair[3:].upper() == "JPY" else (0.05, 10)
+    pu = pair.upper()
+    if pu in PLAUSIBLE:
+        lo, hi = PLAUSIBLE[pu]
+    else:
+        lo, hi = (10, 1000) if pu[3:] == "JPY" else (0.05, 10)
     if not (lo <= mid <= hi):
         return [f"median close {mid:g} is outside the plausible {lo}-{hi} range "
-                f"for {pair} — price scale is probably wrong"]
+                f"for {pair} — price scale is probably wrong "
+                f"(scale used: {price_scale(pair):g}; override with --price-scale)"]
     return []
 
 
@@ -220,6 +246,9 @@ def main():
     ap.add_argument("--pairs", nargs="+", default=["AUDCHF", "AUDUSD", "EURCHF", "EURUSD"])
     ap.add_argument("--years", type=float, default=3)
     ap.add_argument("--price", choices=["bid", "ask", "mid"], default="mid")
+    ap.add_argument("--price-scale", type=float, default=None,
+                    help="override the integer price scale (e.g. 1000 for XAUUSD "
+                         "if the feed disagrees with the built-in table)")
     ap.add_argument("--offline", action="store_true", help="use only cached raw files")
     args = ap.parse_args()
 
@@ -244,7 +273,7 @@ def main():
                         data = f.read()
                 else:
                     data = fetch_month(pair, year, month, side)
-                per_side[side] = parse_month(data, year, month, pair)
+                per_side[side] = parse_month(data, year, month, pair, cfg.price_scale)
             else:
                 for t in set().union(*per_side.values()):
                     entry = {s: per_side[s].get(t) for s in sides}

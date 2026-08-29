@@ -49,9 +49,26 @@ NY = ZoneInfo("America/New_York")
 PAIRS = ["AUDCHF", "AUDUSD", "EURCHF", "EURUSD"]
 
 
+# The quote increment each instrument is measured in. Everything that takes
+# a "pips" argument (--sl-buffer-pips, --min-break-pips) and every pip figure
+# reported is in these units, so the same number means a comparable distance
+# on every instrument.
+#   FX majors  0.0001   a standard pip
+#   JPY crosses 0.01    3-decimal quotes
+#   XAUUSD      0.1     ten cents; gold's conventional pip. At ~$2,600 with
+#                       $10-20 4H swings this puts gold's swing sizes on the
+#                       same 100-200 scale as the JPY crosses, and keeps a
+#                       1-pip stop buffer at a sane 10 cents rather than $1.
+#   XAGUSD      0.01    one cent, the same convention one decimal down
+PIP_SIZES = {"XAUUSD": 0.1, "XAGUSD": 0.01}
+
+
 def pip_size(pair: str) -> float:
-    """JPY-quoted pairs price to 3 decimals, so a pip is 0.01, not 0.0001."""
-    return 0.01 if pair[3:].upper() == "JPY" else 0.0001
+    """Quote increment ("pip") for an instrument."""
+    pair = pair.upper()
+    if pair in PIP_SIZES:
+        return PIP_SIZES[pair]
+    return 0.01 if pair[3:] == "JPY" else 0.0001
 
 
 # ---------------------------------------------------------------- data model

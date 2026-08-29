@@ -22,8 +22,28 @@ python3 backtest/backtest.py --warmup-swings 10 --min-break-pips 5 --partial-at-
     --out backtest/results/partial-all7
 ```
 
-Pip size is per pair: JPY-quoted pairs use 0.01, everything else 0.0001, so
-`--sl-buffer-pips` and `--min-break-pips` mean the same thing on every pair.
+Pip size is per instrument, defined once in `backtest.pip_size()` and shared
+by every tool here, so `--sl-buffer-pips`, `--min-break-pips` and all
+reported pip figures mean a comparable distance everywhere:
+
+| Instrument | Pip | Note |
+|---|---|---|
+| FX majors | 0.0001 | standard pip |
+| JPY crosses | 0.01 | 3-decimal quotes |
+| XAUUSD | 0.1 | ten cents — gold's conventional pip; puts its ~$15-20 4H swings on the same 150-200 scale as the JPY crosses and keeps a 1-pip stop buffer at 10c rather than $1 |
+| XAGUSD | 0.01 | one cent |
+
+Fetching a metal also needs the right integer price scale. Dukascopy is
+believed to serve XAUUSD at 1e3, but that is **unverified** — the feed is
+unreachable from the development environment. `sanity_prices()` rejects an
+implausible median price at fetch time and names the fix, and
+`--price-scale` overrides the table if the feed disagrees:
+
+```bash
+python3 scripts/fetch_dukascopy.py --pairs XAUUSD --years 3
+# if it reports an implausible median close:
+python3 scripts/fetch_dukascopy.py --pairs XAUUSD --years 3 --price-scale 100
+```
 
 Stdlib only, no packages needed. Committed results live in
 `backtest/results/origin-swing/` (wide SL, 1:2), `backtest/results/broken-level/`
