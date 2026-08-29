@@ -52,6 +52,23 @@ python3 scripts/fetch_dukascopy.py --pairs XAUUSD --years 3
 python3 scripts/fetch_dukascopy.py --pairs XAUUSD --years 3 --price-scale 100
 ```
 
+### Fetching a specific window
+
+`--years N` fetches the N years ending today. `--start` / `--end` (both
+`YYYY-MM-DD`, both inclusive) fetch any historical window instead — useful
+for out-of-sample tests on a period the current dataset does not cover:
+
+```bash
+python3 scripts/fetch_dukascopy.py --start 2020-01-01 --end 2022-12-31 \
+    --out data_2020_2022
+```
+
+Raw monthly downloads are cached per pair/month/side independently of the
+window asked for, so overlapping windows reuse what is already on disk and
+only missing months are downloaded. Use `--out` for a different window so
+it does not overwrite the working dataset in `data/`; point the tools at it
+with the same flag they already accept, or copy the files in.
+
 Stdlib only, no packages needed. Committed results live in
 `backtest/results/origin-swing/` (wide SL, 1:2), `backtest/results/broken-level/`
 (tight SL, 1:2), `backtest/results/origin-swing-rr1.8/` (wide SL, 1:1.8) and

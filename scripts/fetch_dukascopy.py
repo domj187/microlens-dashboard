@@ -6,6 +6,12 @@ Usage:
     python3 scripts/fetch_dukascopy.py                     # 3 years, all 4 pairs
     python3 scripts/fetch_dukascopy.py --years 3 --pairs AUDCHF AUDUSD EURCHF EURUSD
     python3 scripts/fetch_dukascopy.py --offline           # rebuild from cached raw files
+    python3 scripts/fetch_dukascopy.py --start 2020-01-01 --end 2022-12-31 \
+        --out data_2020_2022                              # any historical window
+
+Raw monthly downloads are cached per pair/month/side, independent of the
+window requested, so overlapping windows reuse whatever is already on disk
+and only the missing months are downloaded.
 
 Candle conventions (validated against the OANDA exports in this repo):
   - 4H/8H buckets are anchored to the 17:00 America/New_York session boundary.
@@ -244,7 +250,19 @@ def validate(rows, hours, label):
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--pairs", nargs="+", default=["AUDCHF", "AUDUSD", "EURCHF", "EURUSD"])
-    ap.add_argument("--years", type=float, default=3)
+    ap.add_argument("--years", type=float, default=3,
+                    help="window length ending today (default 3); ignored when "
+                         "--start is given")
+    ap.add_argument("--start", default=None, metavar="YYYY-MM-DD",
+                    help="first day to fetch (inclusive). With --end this "
+                         "selects any historical window, e.g. "
+                         "--start 2020-01-01 --end 2022-12-31")
+    ap.add_argument("--end", default=None, metavar="YYYY-MM-DD",
+                    help="last day to fetch (inclusive; defaults to today)")
+    ap.add_argument("--out", default=None, metavar="DIR",
+                    help="output directory (default: data/). Use this when "
+                         "fetching a different window so it does not overwrite "
+                         "the working dataset")
     ap.add_argument("--price", choices=["bid", "ask", "mid"], default="mid")
     ap.add_argument("--price-scale", type=float, default=None,
                     help="override the integer price scale (e.g. 1000 for XAUUSD "
@@ -252,9 +270,29 @@ def main():
     ap.add_argument("--offline", action="store_true", help="use only cached raw files")
     args = ap.parse_args()
 
-    end = datetime.now(UTC)
-    start = end - timedelta(days=round(args.years * 365.25))
-    os.makedirs(DATA_DIR, exist_ok=True)
+    def parse_day(text, what):
+        try:
+            return datetime.strptime(text, "%Y-%m-%d").replace(tzinfo=UTC)
+        except ValueError:
+            raise SystemExit(f"--{what} must be YYYY-MM-DD, got {text!r}")
+
+    # --end is inclusive of the whole day; --start wins over --years
+    end = (parse_day(args.end, "end") + timedelta(days=1) - timedelta(seconds=1)
+           if args.end else datetime.now(UTC))
+    if args.start:
+        start = parse_day(args.start, "start")
+    else:
+        start = end - timedelta(days=round(args.years * 365.25))
+    if start >= end:
+        raise SystemExit(f"empty window: start {start:%Y-%m-%d} is not before "
+                         f"end {end:%Y-%m-%d}")
+    if args.start and args.end is None:
+        print(f"note: --start given without --end, fetching through today "
+              f"({end:%Y-%m-%d})")
+
+    out_dir = args.out or DATA_DIR
+    os.makedirs(out_dir, exist_ok=True)
+    print(f"window: {start:%Y-%m-%d} -> {end:%Y-%m-%d}  ->  {out_dir}\n")
     sides = {"bid": ["BID"], "ask": ["ASK"], "mid": ["BID", "ASK"]}[args.price]
 
     summary = []
@@ -273,7 +311,7 @@ def main():
                         data = f.read()
                 else:
                     data = fetch_month(pair, year, month, side)
-                per_side[side] = parse_month(data, year, month, pair, cfg.price_scale)
+                per_side[side] = parse_month(data, year, month, pair, args.price_scale)
             else:
                 for t in set().union(*per_side.values()):
                     entry = {s: per_side[s].get(t) for s in sides}
@@ -308,7 +346,7 @@ def main():
             ("1D", aggregate_daily(h1), 24, True),
         ]
         for tf, rows, hours, daily in outputs:
-            path = os.path.join(DATA_DIR, f"{pair}_{tf}.csv")
+            path = os.path.join(out_dir, f"{pair}_{tf}.csv")
             write_csv(path, rows, daily=daily)
             problems = ([] if daily else validate(rows, hours, f"{pair} {tf}"))
             problems += sanity_prices(rows, pair)
