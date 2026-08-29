@@ -138,6 +138,22 @@ python3 backtest/news_analysis.py \
     --calendar data/news/high_impact.csv
 ```
 
+## Sub-period breakdown
+
+`backtest/period_breakdown.py` splits any run into calendar years and
+six-month periods — trade count, W/P/L, avg R, total R and P&L — alongside
+the instrument's own price move over the same period, so a profitable
+stretch can be checked against whether the pair was simply trending. It
+also reports how much of the total R comes from the single best half-year.
+
+```bash
+python3 backtest/period_breakdown.py \
+    --trades backtest/results/partial-usdjpy/trades.csv --pair USDJPY
+```
+
+Trades are bucketed by entry date, which is what attributes a result to the
+market regime that produced it.
+
 ## Pair character analysis
 
 `backtest/pair_character.py` measures the structural character of each pair
