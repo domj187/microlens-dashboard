@@ -8,7 +8,8 @@ Strategy (as specified):
   - Entry trigger: a 1H candle CLOSE beyond the most recent confirmed,
     still-unbroken 4H swing level in the direction of bias (break of
     structure, confirmed by candle close).
-  - Entry: limit order at the broken 4H level, filled on the retest.
+  - Entry: limit order at the broken 4H level, filled on the retest
+    (--entry-mode break-close enters at the confirming candle's close instead).
   - Stop loss: just beyond the 4H swing of the BOS leg (see --sl-mode).
   - Take profit: fixed 1:2 RR from actual entry. No exceptions.
   - Risk: 1% of current (booked) equity per trade. One position per pair.
@@ -441,7 +442,14 @@ def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
                         # distance is testable at 1H granularity
                         anchor = min(broken_high.price, c.l)
                     sl = anchor - buffer
-                    if sl < broken_high.price:
+                    if cfg.entry_mode == "break-close":
+                        # enter at the close of the confirming candle: the bar
+                        # is already complete, so management starts next bar
+                        if sl < c.c:
+                            risk = c.c - sl
+                            pos = Trade(pair, "long", t, t, c.c, sl,
+                                        c.c + cfg.rr * risk, orig_sl=sl)
+                    elif sl < broken_high.price:
                         setup = Setup("long", broken_high.price, sl, t, cfg.retest_window)
             elif bias == "short" and broken_low is not None:
                 origin = h4.latest_high()
@@ -451,7 +459,12 @@ def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
                     else:
                         anchor = max(broken_low.price, c.h)
                     sl = anchor + buffer
-                    if sl > broken_low.price:
+                    if cfg.entry_mode == "break-close":
+                        if sl > c.c:
+                            risk = sl - c.c
+                            pos = Trade(pair, "short", t, t, c.c, sl,
+                                        c.c - cfg.rr * risk, orig_sl=sl)
+                    elif sl > broken_low.price:
                         setup = Setup("short", broken_low.price, sl, t, cfg.retest_window)
 
     if pos is not None:  # still open at end of data
@@ -518,6 +531,7 @@ def run_portfolio(all_trades: list[Trade], cfg: argparse.Namespace):
             "swing_n": cfg.swing_n, "retest_window_bars": cfg.retest_window,
             "sl_mode": cfg.sl_mode, "sl_buffer_pips": cfg.sl_buffer_pips,
             "rr": cfg.rr, "risk_pct": cfg.risk_pct, "start_equity": cfg.start_equity,
+            "entry_mode": cfg.entry_mode,
             "breakeven": cfg.breakeven, "partial_at_1r": cfg.partial_at_1r,
             "partial_frac": cfg.partial_frac, "warmup_swings": cfg.warmup_swings,
             "min_break_pips": cfg.min_break_pips, "trend_mode": cfg.trend_mode,
@@ -689,6 +703,13 @@ def main():
                          "conservatively)")
     ap.add_argument("--risk-pct", type=float, default=1.0, help="risk per trade, %% of equity")
     ap.add_argument("--start-equity", type=float, default=10_000.0)
+    ap.add_argument("--entry-mode", choices=["retest", "break-close"], default="retest",
+                    help="retest: limit at the broken 4H level, filled when price "
+                         "returns to it (default). break-close: enter at the close "
+                         "of the 1H candle that confirms the break, no retest wait "
+                         "— the stop is unchanged, so risk is wider by however far "
+                         "the candle closed beyond the level, and the target moves "
+                         "out with it.")
     ap.add_argument("--pairs", nargs="+", default=PAIRS,
                     help="pairs to trade (default: the original four)")
     ap.add_argument("--out", default=os.path.join(HERE, "results"))

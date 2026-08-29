@@ -20,6 +20,9 @@ python3 backtest/backtest.py --warmup-swings 10 --min-break-pips 5 --partial-at-
 python3 backtest/backtest.py --warmup-swings 10 --min-break-pips 5 --partial-at-1r \
     --pairs AUDCHF AUDUSD EURCHF EURUSD GBPUSD USDJPY GBPJPY \
     --out backtest/results/partial-all7
+python3 backtest/backtest.py --warmup-swings 10 --min-break-pips 5 --partial-at-1r \
+    --entry-mode break-close --pairs AUDCHF AUDUSD EURCHF EURUSD GBPUSD USDJPY GBPJPY \
+    --out backtest/results/breakclose-all7
 ```
 
 Pip size is per instrument, defined once in `backtest.pip_size()` and shared
@@ -105,7 +108,15 @@ each directory contains:
    higher low behind it (last confirmed swing low above the previous one),
    bear the mirror image; an unqualified break against the current state
    demotes it to no-trend instead of reversing it.
-10. **Partial profit at +1R** (optional, `--partial-at-1r`) — closes
+10. **Entry mode** (`--entry-mode`) — `retest` (default) places the limit at
+   the broken 4H level and waits for price to return to it. `break-close`
+   skips the wait and enters at the close of the 1H candle that confirmed
+   the break. The stop is identical in both, so entering beyond the level
+   widens the risk by however far the candle closed past it, and the fixed
+   target moves out with it: the same move must now travel further to pay
+   the same R. Every setup trades (no missed retests), so trade counts and
+   the outcome mix change too.
+11. **Partial profit at +1R** (optional, `--partial-at-1r`) — closes
    `--partial-frac` of the position (default half) at +1R, banks it, and
    moves the stop to entry for the remainder, which runs to the `--rr`
    target. Outcomes per trade: never reached +1R and stopped = **−1R**
