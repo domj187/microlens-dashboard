@@ -14,7 +14,16 @@ python3 backtest/backtest.py --warmup-swings 10 --min-break-pips 5 \
     --trend-mode hhll --out backtest/results/origin-swing-hhll
 python3 backtest/backtest.py --warmup-swings 10 --min-break-pips 5 \
     --partial-at-1r --out backtest/results/origin-swing-partial
+# the same variant on the wider pair set (--pairs defaults to the original four)
+python3 backtest/backtest.py --warmup-swings 10 --min-break-pips 5 --partial-at-1r \
+    --pairs USDJPY GBPJPY --out backtest/results/partial-jpy
+python3 backtest/backtest.py --warmup-swings 10 --min-break-pips 5 --partial-at-1r \
+    --pairs AUDCHF AUDUSD EURCHF EURUSD GBPUSD USDJPY GBPJPY \
+    --out backtest/results/partial-all7
 ```
+
+Pip size is per pair: JPY-quoted pairs use 0.01, everything else 0.0001, so
+`--sl-buffer-pips` and `--min-break-pips` mean the same thing on every pair.
 
 Stdlib only, no packages needed. Committed results live in
 `backtest/results/origin-swing/` (wide SL, 1:2), `backtest/results/broken-level/`

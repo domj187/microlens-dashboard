@@ -47,7 +47,11 @@ DATA_DIR = os.path.join(os.path.dirname(HERE), "data")
 NY = ZoneInfo("America/New_York")
 
 PAIRS = ["AUDCHF", "AUDUSD", "EURCHF", "EURUSD"]
-PIP = 0.0001  # all four pairs are 5-decimal quotes
+
+
+def pip_size(pair: str) -> float:
+    """JPY-quoted pairs price to 3 decimals, so a pip is 0.01, not 0.0001."""
+    return 0.01 if pair[3:].upper() == "JPY" else 0.0001
 
 
 # ---------------------------------------------------------------- data model
@@ -304,13 +308,14 @@ def close_at_entry(pos: Trade, cfg) -> None:
 def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
     h1 = load_candles(pair, "60")
     h4 = StructureTracker(load_candles(pair, "240"), cfg.swing_n)
-    min_break = cfg.min_break_pips * PIP
+    pip = pip_size(pair)
+    min_break = cfg.min_break_pips * pip
     h8 = TrendTracker(load_candles(pair, "480"), cfg.swing_n,
                       cfg.warmup_swings, min_break, cfg.trend_mode)
     d1 = TrendTracker(load_candles(pair, "1D"), cfg.swing_n,
                       cfg.warmup_swings, min_break, cfg.trend_mode)
 
-    buffer = cfg.sl_buffer_pips * PIP
+    buffer = cfg.sl_buffer_pips * pip
     trades: list[Trade] = []
     setup: Setup | None = None
     pos: Trade | None = None
@@ -491,7 +496,7 @@ def run_portfolio(all_trades: list[Trade], cfg: argparse.Namespace):
     gross_win = sum(tr.pnl for tr in closed if tr.pnl > 0)
     gross_loss = -sum(tr.pnl for tr in closed if tr.pnl < 0)
     summary = {
-        "pairs": PAIRS,
+        "pairs": sorted({tr.pair for tr in all_trades}),
         "config": {
             "swing_n": cfg.swing_n, "retest_window_bars": cfg.retest_window,
             "sl_mode": cfg.sl_mode, "sl_buffer_pips": cfg.sl_buffer_pips,
@@ -517,7 +522,7 @@ def run_portfolio(all_trades: list[Trade], cfg: argparse.Namespace):
         "final_equity": round(equity, 2),
         "per_pair": {},
     }
-    for p in PAIRS:
+    for p in sorted({tr.pair for tr in all_trades}):
         pt = [tr for tr in closed if tr.pair == p]
         pw = sum(1 for tr in pt if tr.result == "win")
         summary["per_pair"][p] = {
@@ -667,11 +672,13 @@ def main():
                          "conservatively)")
     ap.add_argument("--risk-pct", type=float, default=1.0, help="risk per trade, %% of equity")
     ap.add_argument("--start-equity", type=float, default=10_000.0)
+    ap.add_argument("--pairs", nargs="+", default=PAIRS,
+                    help="pairs to trade (default: the original four)")
     ap.add_argument("--out", default=os.path.join(HERE, "results"))
     cfg = ap.parse_args()
 
     all_trades: list[Trade] = []
-    for pair in PAIRS:
+    for pair in cfg.pairs:
         trades = run_pair(pair, cfg)
         all_trades.extend(trades)
         print(f"{pair}: {sum(1 for t in trades if t.result in ('win', 'loss', 'scratch', 'partial'))} closed trades")

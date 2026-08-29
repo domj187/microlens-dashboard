@@ -1,0 +1,54 @@
+{
+  "pairs": [
+    "GBPJPY",
+    "USDJPY"
+  ],
+  "config": {
+    "swing_n": 2,
+    "retest_window_bars": 24,
+    "sl_mode": "origin-swing",
+    "sl_buffer_pips": 1.0,
+    "rr": 2.0,
+    "risk_pct": 1.0,
+    "start_equity": 10000.0,
+    "breakeven": false,
+    "partial_at_1r": true,
+    "partial_frac": 0.5,
+    "warmup_swings": 10,
+    "min_break_pips": 5.0,
+    "trend_mode": "break"
+  },
+  "total_trades": 123,
+  "wins": 37,
+  "losses": 56,
+  "scratches": 0,
+  "partials": 30,
+  "open_at_end": 1,
+  "ambiguous_bars": 1,
+  "win_rate_pct": 30.08,
+  "profit_factor": 1.226,
+  "net_profit": 1451.03,
+  "net_return_pct": 14.51,
+  "max_drawdown_pct": 15.48,
+  "avg_r": 0.118,
+  "total_r": 14.5,
+  "final_equity": 11451.03,
+  "per_pair": {
+    "GBPJPY": {
+      "trades": 65,
+      "wins": 18,
+      "partials": 15,
+      "win_rate_pct": 27.69,
+      "avg_r": 0.038,
+      "pnl": 205.46
+    },
+    "USDJPY": {
+      "trades": 58,
+      "wins": 19,
+      "partials": 15,
+      "win_rate_pct": 32.76,
+      "avg_r": 0.207,
+      "pnl": 1245.57
+    }
+  }
+}
