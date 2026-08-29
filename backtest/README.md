@@ -23,6 +23,10 @@ python3 backtest/backtest.py --warmup-swings 10 --min-break-pips 5 --partial-at-
 python3 backtest/backtest.py --warmup-swings 10 --min-break-pips 5 --partial-at-1r \
     --entry-mode break-close --pairs AUDCHF AUDUSD EURCHF EURUSD GBPUSD USDJPY GBPJPY \
     --out backtest/results/breakclose-all7
+python3 backtest/backtest.py --warmup-swings 10 --min-break-pips 5 --partial-at-1r \
+    --entry-mode swing-seq --swing-seq 2 \
+    --pairs AUDCHF AUDUSD EURCHF EURUSD GBPUSD USDJPY GBPJPY \
+    --out backtest/results/swingseq2-all7
 ```
 
 Pip size is per instrument, defined once in `backtest.pip_size()` and shared
@@ -115,7 +119,12 @@ each directory contains:
    widens the risk by however far the candle closed past it, and the fixed
    target moves out with it: the same move must now travel further to pay
    the same R. Every setup trades (no missed retests), so trade counts and
-   the outcome mix change too.
+   the outcome mix change too. `swing-seq` drops the 1H break and the
+   retest entirely: it enters at the close of the 4H candle that confirms
+   the `--swing-seq` Nth consecutive higher low (long) or lower high
+   (short), with the stop just beyond that swing. N=2 is "a second higher
+   low"; N=1 is simply "a higher low". Because the stop sits at the swing
+   the entry is measured from, risk is far tighter than either BOS mode.
 11. **Partial profit at +1R** (optional, `--partial-at-1r`) — closes
    `--partial-frac` of the position (default half) at +1R, banks it, and
    moves the stop to entry for the remainder, which runs to the `--rr`
