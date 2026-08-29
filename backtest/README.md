@@ -66,8 +66,23 @@ python3 scripts/fetch_dukascopy.py --start 2020-01-01 --end 2022-12-31 \
 Raw monthly downloads are cached per pair/month/side independently of the
 window asked for, so overlapping windows reuse what is already on disk and
 only missing months are downloaded. Use `--out` for a different window so
-it does not overwrite the working dataset in `data/`; point the tools at it
-with the same flag they already accept, or copy the files in.
+it does not overwrite the working dataset in `data/`.
+
+`backtest.py`, `pair_character.py` and `period_breakdown.py` all take
+`--data-dir` to read that window instead of `data/`, so an out-of-sample
+run needs no copying:
+
+```bash
+python3 scripts/fetch_dukascopy.py --start 2020-01-01 --end 2022-12-31 \
+    --out data_2020_2022
+python3 backtest/pair_character.py --data-dir data_2020_2022
+python3 backtest/backtest.py --warmup-swings 10 --min-break-pips 5 \
+    --partial-at-1r --data-dir data_2020_2022 \
+    --pairs AUDCHF AUDUSD EURCHF EURUSD GBPUSD USDJPY GBPJPY \
+    --out backtest/results/partial-2020-2022
+python3 backtest/period_breakdown.py --data-dir data_2020_2022 \
+    --trades backtest/results/partial-2020-2022/trades.csv --pair USDJPY
+```
 
 Stdlib only, no packages needed. Committed results live in
 `backtest/results/origin-swing/` (wide SL, 1:2), `backtest/results/broken-level/`

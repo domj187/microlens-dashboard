@@ -49,6 +49,24 @@ NY = ZoneInfo("America/New_York")
 
 PAIRS = ["AUDCHF", "AUDUSD", "EURCHF", "EURUSD"]
 
+_data_dir = DATA_DIR   # mutable; --data-dir points the tools at another set
+
+
+def data_dir() -> str:
+    """Directory the candle CSVs are read from (see set_data_dir)."""
+    return _data_dir
+
+
+def set_data_dir(path: str) -> None:
+    """Point every tool at a different data directory, e.g. an out-of-sample
+    window fetched with `fetch_dukascopy.py --start ... --out data_2020_2022`.
+    Read through data_dir(); importing DATA_DIR by name binds a copy and
+    would not see this change."""
+    global _data_dir
+    if not os.path.isdir(path):
+        raise SystemExit(f"--data-dir {path!r} is not a directory")
+    _data_dir = os.path.abspath(path)
+
 
 # The quote increment each instrument is measured in. Everything that takes
 # a "pips" argument (--sl-buffer-pips, --min-break-pips) and every pip figure
@@ -131,7 +149,7 @@ class Trade:
 # ---------------------------------------------------------------- CSV loading
 
 def load_candles(pair: str, tf: str) -> list[Candle]:
-    path = os.path.join(DATA_DIR, f"{pair}_{tf}.csv")
+    path = os.path.join(data_dir(), f"{pair}_{tf}.csv")
     out: list[Candle] = []
     with open(path, newline="") as f:
         for row in csv.DictReader(f):
@@ -762,8 +780,14 @@ def main():
                          "the stricter reading; 1 = simply a higher low)")
     ap.add_argument("--pairs", nargs="+", default=PAIRS,
                     help="pairs to trade (default: the original four)")
+    ap.add_argument("--data-dir", default=None,
+                    help="directory holding {PAIR}_{60,240,480,1D}.csv "
+                         "(default: data/). Use it to run an out-of-sample "
+                         "window fetched to another directory.")
     ap.add_argument("--out", default=os.path.join(HERE, "results"))
     cfg = ap.parse_args()
+    if cfg.data_dir:
+        set_data_dir(cfg.data_dir)
 
     all_trades: list[Trade] = []
     for pair in cfg.pairs:
