@@ -33,7 +33,12 @@ LON = ZoneInfo("Europe/London")
 UTC = timezone.utc
 
 BASE = "https://datafeed.dukascopy.com/datafeed"
-PRICE_SCALE = 1e5  # 5-decimal pairs (all four defaults); JPY pairs would be 1e3
+# Dukascopy stores prices as integers scaled by the instrument's decimal
+# places: 5 decimals for most pairs, 3 for JPY-quoted ones. Using 1e5 on a
+# JPY pair silently yields prices 100x too small (146.20 -> 1.4620), which
+# passes every OHLC sanity check, so it must be picked per pair.
+PRICE_SCALE_DEFAULT = 1e5
+PRICE_SCALE_JPY = 1e3
 RECORD = struct.Struct(">iiiiif")  # time_offset, open, close, low, high, volume
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -84,7 +89,12 @@ def fetch_month(pair, year, month, side):
     return data
 
 
-def parse_month(data, year, month):
+def price_scale(pair):
+    """Integer price scale for a pair (JPY-quoted pairs use 3 decimals)."""
+    return PRICE_SCALE_JPY if pair[3:].upper() == "JPY" else PRICE_SCALE_DEFAULT
+
+
+def parse_month(data, year, month, pair):
     """Parse a monthly bi5 into {utc_datetime: (o, h, l, c, volume)}."""
     if not data:
         return {}
@@ -92,6 +102,7 @@ def parse_month(data, year, month):
     if len(raw) % RECORD.size:
         raise ValueError(f"corrupt bi5: {len(raw)} bytes not a multiple of {RECORD.size}")
     month_start = datetime(year, month, 1, tzinfo=UTC)
+    scale = price_scale(pair)
     out = {}
     offsets = [RECORD.unpack_from(raw, i * RECORD.size)[0] for i in range(len(raw) // RECORD.size)]
     # offsets are seconds from month start; guard against a millisecond variant
@@ -99,7 +110,7 @@ def parse_month(data, year, month):
     for i in range(len(raw) // RECORD.size):
         toff, o, c, lo, hi, vol = RECORD.unpack_from(raw, i * RECORD.size)
         t = month_start + timedelta(seconds=toff // divisor)
-        out[t] = (o / PRICE_SCALE, hi / PRICE_SCALE, lo / PRICE_SCALE, c / PRICE_SCALE, vol)
+        out[t] = (o / scale, hi / scale, lo / scale, c / scale, vol)
     return out
 
 
@@ -167,6 +178,23 @@ def write_csv(path, rows, daily=False):
             w.writerow([ts, fmt_price(o), fmt_price(h), fmt_price(l), fmt_price(c)])
 
 
+def sanity_prices(rows, pair):
+    """Catch a wrong price scale before it reaches disk.
+
+    Every JPY cross trades well above 10; every other major sits between
+    0.05 and 10. A scale error moves prices by a factor of 100, so this
+    separates the two cases with a wide margin and no tuning.
+    """
+    if not rows:
+        return []
+    mid = sorted(r[4] for r in rows)[len(rows) // 2]
+    lo, hi = (10, 1000) if pair[3:].upper() == "JPY" else (0.05, 10)
+    if not (lo <= mid <= hi):
+        return [f"median close {mid:g} is outside the plausible {lo}-{hi} range "
+                f"for {pair} — price scale is probably wrong"]
+    return []
+
+
 def validate(rows, hours, label):
     """Check for duplicates and unexpected gaps; returns list of problem strings."""
     problems = []
@@ -216,7 +244,7 @@ def main():
                         data = f.read()
                 else:
                     data = fetch_month(pair, year, month, side)
-                per_side[side] = parse_month(data, year, month)
+                per_side[side] = parse_month(data, year, month, pair)
             else:
                 for t in set().union(*per_side.values()):
                     entry = {s: per_side[s].get(t) for s in sides}
@@ -253,7 +281,8 @@ def main():
         for tf, rows, hours, daily in outputs:
             path = os.path.join(DATA_DIR, f"{pair}_{tf}.csv")
             write_csv(path, rows, daily=daily)
-            problems = [] if daily else validate(rows, hours, f"{pair} {tf}")
+            problems = ([] if daily else validate(rows, hours, f"{pair} {tf}"))
+            problems += sanity_prices(rows, pair)
             first = rows[0][0] if daily else rows[0][0].astimezone(LON)
             last = rows[-1][0] if daily else rows[-1][0].astimezone(LON)
             summary.append((pair, tf, len(rows), str(first), str(last), problems))
