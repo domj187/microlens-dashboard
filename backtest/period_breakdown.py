@@ -22,7 +22,7 @@ import csv
 import os
 from datetime import datetime, timezone
 
-from backtest import load_candles, pip_size
+from backtest import load_candles, pip_size, set_data_dir
 
 
 def num(v):
@@ -87,7 +87,12 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--trades", required=True)
     ap.add_argument("--pair", default=None, help="restrict to one pair")
+    ap.add_argument("--data-dir", default=None,
+                    help="directory holding the candle CSVs, used for the "
+                         "price-move column (default: data/)")
     cfg = ap.parse_args()
+    if cfg.data_dir:
+        set_data_dir(cfg.data_dir)
 
     with open(cfg.trades, newline="") as f:
         rows = [r for r in csv.DictReader(f)

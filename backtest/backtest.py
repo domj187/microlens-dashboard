@@ -8,7 +8,8 @@ Strategy (as specified):
   - Entry trigger: a 1H candle CLOSE beyond the most recent confirmed,
     still-unbroken 4H swing level in the direction of bias (break of
     structure, confirmed by candle close).
-  - Entry: limit order at the broken 4H level, filled on the retest.
+  - Entry: limit order at the broken 4H level, filled on the retest
+    (--entry-mode break-close enters at the confirming candle's close instead).
   - Stop loss: just beyond the 4H swing of the BOS leg (see --sl-mode).
   - Take profit: fixed 1:2 RR from actual entry. No exceptions.
   - Risk: 1% of current (booked) equity per trade. One position per pair.
@@ -48,6 +49,24 @@ NY = ZoneInfo("America/New_York")
 
 PAIRS = ["AUDCHF", "AUDUSD", "EURCHF", "EURUSD"]
 
+_data_dir = DATA_DIR   # mutable; --data-dir points the tools at another set
+
+
+def data_dir() -> str:
+    """Directory the candle CSVs are read from (see set_data_dir)."""
+    return _data_dir
+
+
+def set_data_dir(path: str) -> None:
+    """Point every tool at a different data directory, e.g. an out-of-sample
+    window fetched with `fetch_dukascopy.py --start ... --out data_2020_2022`.
+    Read through data_dir(); importing DATA_DIR by name binds a copy and
+    would not see this change."""
+    global _data_dir
+    if not os.path.isdir(path):
+        raise SystemExit(f"--data-dir {path!r} is not a directory")
+    _data_dir = os.path.abspath(path)
+
 
 # The quote increment each instrument is measured in. Everything that takes
 # a "pips" argument (--sl-buffer-pips, --min-break-pips) and every pip figure
@@ -60,7 +79,12 @@ PAIRS = ["AUDCHF", "AUDUSD", "EURCHF", "EURUSD"]
 #                       same 100-200 scale as the JPY crosses, and keeps a
 #                       1-pip stop buffer at a sane 10 cents rather than $1.
 #   XAGUSD      0.01    one cent, the same convention one decimal down
-PIP_SIZES = {"XAUUSD": 0.1, "XAGUSD": 0.01}
+#   NAS100      1.0     one index point. Indices are not FX: at ~20,000 with
+#                       150-400 point 4H swings this puts them on the same
+#                       100-400 scale as the JPY crosses and gold, and keeps
+#                       a 1-pip stop buffer at 1 point rather than 0.0001.
+PIP_SIZES = {"XAUUSD": 0.1, "XAGUSD": 0.01, "NAS100": 1.0,
+             "SPX500": 1.0, "US30": 1.0, "GER40": 1.0}
 
 
 def pip_size(pair: str) -> float:
@@ -130,7 +154,7 @@ class Trade:
 # ---------------------------------------------------------------- CSV loading
 
 def load_candles(pair: str, tf: str) -> list[Candle]:
-    path = os.path.join(DATA_DIR, f"{pair}_{tf}.csv")
+    path = os.path.join(data_dir(), f"{pair}_{tf}.csv")
     out: list[Candle] = []
     with open(path, newline="") as f:
         for row in csv.DictReader(f):
@@ -255,6 +279,24 @@ class StructureTracker:
                 if is_swing(cs, j, self.n, "L"):
                     self.lows.append(Swing("L", cs[j].open_time, cs[j].l, cs[i].close_time))
             self.i += 1
+
+    def just_confirmed(self, t: datetime, kind: str) -> bool:
+        """True if a swing of this kind was confirmed at exactly this time."""
+        seq = self.highs if kind == "H" else self.lows
+        return bool(seq) and seq[-1].confirm_time == t
+
+    def ascending_lows(self, n: int) -> bool:
+        """The last n+1 confirmed lows are strictly ascending (n higher lows)."""
+        if len(self.lows) < n + 1:
+            return False
+        p = [s.price for s in self.lows[-(n + 1):]]
+        return all(b > a for a, b in zip(p, p[1:]))
+
+    def descending_highs(self, n: int) -> bool:
+        if len(self.highs) < n + 1:
+            return False
+        p = [s.price for s in self.highs[-(n + 1):]]
+        return all(b < a for a, b in zip(p, p[1:]))
 
     @staticmethod
     def _latest_unbroken(swings: list[Swing]) -> Swing | None:
@@ -425,9 +467,33 @@ def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
                 elif setup is not None and setup.bars_left <= 0:
                     setup = None
 
-        # ---- 3) BOS detection on this 1H close
+        # ---- 3) entry
         broken_high, broken_low = h4.mark_breaks(c.c)
-        if cfg.warmup_swings and len(h4.highs) + len(h4.lows) < cfg.warmup_swings:
+        warming = cfg.warmup_swings and len(h4.highs) + len(h4.lows) < cfg.warmup_swings
+
+        if cfg.entry_mode == "swing-seq":
+            # No BOS, no retest: enter at the close of the 4H candle that
+            # confirms the Nth consecutive higher low (long) / lower high
+            # (short). That candle has just closed, so management starts on
+            # the next 1H bar.
+            if not warming and pos is None and bias is not None:
+                bar4 = h4.candles[h4.i - 1] if h4.i else None
+                if bar4 is not None and bar4.close_time == t:
+                    if (bias == "long" and h4.just_confirmed(t, "L")
+                            and h4.ascending_lows(cfg.swing_seq)):
+                        sl = h4.lows[-1].price - buffer
+                        if sl < bar4.c:
+                            risk = bar4.c - sl
+                            pos = Trade(pair, "long", t, t, bar4.c, sl,
+                                        bar4.c + cfg.rr * risk, orig_sl=sl)
+                    elif (bias == "short" and h4.just_confirmed(t, "H")
+                            and h4.descending_highs(cfg.swing_seq)):
+                        sl = h4.highs[-1].price + buffer
+                        if sl > bar4.c:
+                            risk = sl - bar4.c
+                            pos = Trade(pair, "short", t, t, bar4.c, sl,
+                                        bar4.c - cfg.rr * risk, orig_sl=sl)
+        elif warming:
             pass  # 4H structure still warming up: no setups
         elif pos is None:
             if bias == "long" and broken_high is not None:
@@ -441,7 +507,14 @@ def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
                         # distance is testable at 1H granularity
                         anchor = min(broken_high.price, c.l)
                     sl = anchor - buffer
-                    if sl < broken_high.price:
+                    if cfg.entry_mode == "break-close":
+                        # enter at the close of the confirming candle: the bar
+                        # is already complete, so management starts next bar
+                        if sl < c.c:
+                            risk = c.c - sl
+                            pos = Trade(pair, "long", t, t, c.c, sl,
+                                        c.c + cfg.rr * risk, orig_sl=sl)
+                    elif sl < broken_high.price:
                         setup = Setup("long", broken_high.price, sl, t, cfg.retest_window)
             elif bias == "short" and broken_low is not None:
                 origin = h4.latest_high()
@@ -451,7 +524,12 @@ def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
                     else:
                         anchor = max(broken_low.price, c.h)
                     sl = anchor + buffer
-                    if sl > broken_low.price:
+                    if cfg.entry_mode == "break-close":
+                        if sl > c.c:
+                            risk = sl - c.c
+                            pos = Trade(pair, "short", t, t, c.c, sl,
+                                        c.c - cfg.rr * risk, orig_sl=sl)
+                    elif sl > broken_low.price:
                         setup = Setup("short", broken_low.price, sl, t, cfg.retest_window)
 
     if pos is not None:  # still open at end of data
@@ -518,6 +596,7 @@ def run_portfolio(all_trades: list[Trade], cfg: argparse.Namespace):
             "swing_n": cfg.swing_n, "retest_window_bars": cfg.retest_window,
             "sl_mode": cfg.sl_mode, "sl_buffer_pips": cfg.sl_buffer_pips,
             "rr": cfg.rr, "risk_pct": cfg.risk_pct, "start_equity": cfg.start_equity,
+            "entry_mode": cfg.entry_mode, "swing_seq": cfg.swing_seq,
             "breakeven": cfg.breakeven, "partial_at_1r": cfg.partial_at_1r,
             "partial_frac": cfg.partial_frac, "warmup_swings": cfg.warmup_swings,
             "min_break_pips": cfg.min_break_pips, "trend_mode": cfg.trend_mode,
@@ -689,10 +768,31 @@ def main():
                          "conservatively)")
     ap.add_argument("--risk-pct", type=float, default=1.0, help="risk per trade, %% of equity")
     ap.add_argument("--start-equity", type=float, default=10_000.0)
+    ap.add_argument("--entry-mode", choices=["retest", "break-close", "swing-seq"],
+                    default="retest",
+                    help="retest: limit at the broken 4H level, filled when price "
+                         "returns to it (default). break-close: enter at the close "
+                         "of the 1H candle that confirms the break, no retest wait "
+                         "— the stop is unchanged, so risk is wider by however far "
+                         "the candle closed beyond the level, and the target moves "
+                         "out with it. swing-seq: ignore the 1H break entirely "
+                         "and enter at the close of the 4H candle confirming the "
+                         "Nth consecutive higher low (long) or lower high (short), "
+                         "stop beyond that swing.")
+    ap.add_argument("--swing-seq", type=int, default=2,
+                    help="with --entry-mode swing-seq: how many consecutive higher "
+                         "lows / lower highs are required (2 = a second higher low, "
+                         "the stricter reading; 1 = simply a higher low)")
     ap.add_argument("--pairs", nargs="+", default=PAIRS,
                     help="pairs to trade (default: the original four)")
+    ap.add_argument("--data-dir", default=None,
+                    help="directory holding {PAIR}_{60,240,480,1D}.csv "
+                         "(default: data/). Use it to run an out-of-sample "
+                         "window fetched to another directory.")
     ap.add_argument("--out", default=os.path.join(HERE, "results"))
     cfg = ap.parse_args()
+    if cfg.data_dir:
+        set_data_dir(cfg.data_dir)
 
     all_trades: list[Trade] = []
     for pair in cfg.pairs:

@@ -20,6 +20,13 @@ python3 backtest/backtest.py --warmup-swings 10 --min-break-pips 5 --partial-at-
 python3 backtest/backtest.py --warmup-swings 10 --min-break-pips 5 --partial-at-1r \
     --pairs AUDCHF AUDUSD EURCHF EURUSD GBPUSD USDJPY GBPJPY \
     --out backtest/results/partial-all7
+python3 backtest/backtest.py --warmup-swings 10 --min-break-pips 5 --partial-at-1r \
+    --entry-mode break-close --pairs AUDCHF AUDUSD EURCHF EURUSD GBPUSD USDJPY GBPJPY \
+    --out backtest/results/breakclose-all7
+python3 backtest/backtest.py --warmup-swings 10 --min-break-pips 5 --partial-at-1r \
+    --entry-mode swing-seq --swing-seq 2 \
+    --pairs AUDCHF AUDUSD EURCHF EURUSD GBPUSD USDJPY GBPJPY \
+    --out backtest/results/swingseq2-all7
 ```
 
 Pip size is per instrument, defined once in `backtest.pip_size()` and shared
@@ -32,6 +39,7 @@ reported pip figures mean a comparable distance everywhere:
 | JPY crosses | 0.01 | 3-decimal quotes |
 | XAUUSD | 0.1 | ten cents — gold's conventional pip; puts its ~$15-20 4H swings on the same 150-200 scale as the JPY crosses and keeps a 1-pip stop buffer at 10c rather than $1 |
 | XAGUSD | 0.01 | one cent |
+| NAS100, SPX500, US30, GER40 | 1.0 | one index point — indices are not FX; at ~20,000 with 150-400 point 4H swings this puts them on the same 100-400 scale as the JPY crosses and gold, and keeps a 1-pip stop buffer at 1 point |
 
 Fetching a metal also needs the right integer price scale. Dukascopy is
 believed to serve XAUUSD at 1e3, but that is **unverified** — the feed is
@@ -43,6 +51,79 @@ implausible median price at fetch time and names the fix, and
 python3 scripts/fetch_dukascopy.py --pairs XAUUSD --years 3
 # if it reports an implausible median close:
 python3 scripts/fetch_dukascopy.py --pairs XAUUSD --years 3 --price-scale 100
+```
+
+### Indices
+
+The repo's symbol is the short broker-style name (`NAS100`), which names the
+CSVs; each fetcher translates it to that source's own instrument string:
+
+| Symbol | Dukascopy (v1 API code) | OANDA v20 |
+|---|---|---|
+| NAS100 | `USATECH.IDX-USD` | `NAS100_USD` |
+| SPX500 | `USA500.IDX-USD` | `SPX500_USD` |
+| US30 | `USA30.IDX-USD` | `US30_USD` |
+
+`fetch_dukascopy.py` reads Dukascopy's current JSON API, the one their own
+maintained client uses:
+
+```
+https://jetta.dukascopy.com/v1/candles/hour/{code}/{BID|ASK}/{year}/{month}
+```
+
+Note the month is **1-based** here (the retired `.bi5` datafeed used 0-based),
+and instruments are addressed by `code` — `EUR-USD`, `USATECH.IDX-USD`. FX
+and metals are derived automatically (`EURUSD` -> `EUR-USD`); indices come
+from `DUKASCOPY_V1_CODE`. The old `.bi5` path served FX but returned 503 for
+every index spelling, which is why it was replaced.
+
+**There is no price scale to configure any more.** Each response carries its
+own `multiplier`: prices arrive as integer units, reconstructed as
+`units * multiplier` from a base candle plus per-bar deltas, with bars the
+feed skipped filled flat at the previous close. `--price-scale` is accepted
+but ignored, and the guessed per-instrument scales are gone.
+
+```bash
+python3 scripts/fetch_dukascopy.py --pairs NAS100 --years 3   # -> data/NAS100_*.csv
+python3 scripts/fetch_oanda.py --pairs NAS100 --years 3
+```
+
+The codes above come from dukascopy-node's generated instrument metadata,
+so they are the names Dukascopy itself publishes rather than a guess. What
+is **not** verified here is either feed responding — both are unreachable
+from the development environment — so the OANDA CFD names and whether your
+OANDA division offers index CFDs at all still need checking on your side.
+
+### Fetching a specific window
+
+`--years N` fetches the N years ending today. `--start` / `--end` (both
+`YYYY-MM-DD`, both inclusive) fetch any historical window instead — useful
+for out-of-sample tests on a period the current dataset does not cover:
+
+```bash
+python3 scripts/fetch_dukascopy.py --start 2020-01-01 --end 2022-12-31 \
+    --out data_2020_2022
+```
+
+Raw monthly downloads are cached per pair/month/side independently of the
+window asked for, so overlapping windows reuse what is already on disk and
+only missing months are downloaded. Use `--out` for a different window so
+it does not overwrite the working dataset in `data/`.
+
+`backtest.py`, `pair_character.py` and `period_breakdown.py` all take
+`--data-dir` to read that window instead of `data/`, so an out-of-sample
+run needs no copying:
+
+```bash
+python3 scripts/fetch_dukascopy.py --start 2020-01-01 --end 2022-12-31 \
+    --out data_2020_2022
+python3 backtest/pair_character.py --data-dir data_2020_2022
+python3 backtest/backtest.py --warmup-swings 10 --min-break-pips 5 \
+    --partial-at-1r --data-dir data_2020_2022 \
+    --pairs AUDCHF AUDUSD EURCHF EURUSD GBPUSD USDJPY GBPJPY \
+    --out backtest/results/partial-2020-2022
+python3 backtest/period_breakdown.py --data-dir data_2020_2022 \
+    --trades backtest/results/partial-2020-2022/trades.csv --pair USDJPY
 ```
 
 Stdlib only, no packages needed. Committed results live in
@@ -105,7 +186,20 @@ each directory contains:
    higher low behind it (last confirmed swing low above the previous one),
    bear the mirror image; an unqualified break against the current state
    demotes it to no-trend instead of reversing it.
-10. **Partial profit at +1R** (optional, `--partial-at-1r`) — closes
+10. **Entry mode** (`--entry-mode`) — `retest` (default) places the limit at
+   the broken 4H level and waits for price to return to it. `break-close`
+   skips the wait and enters at the close of the 1H candle that confirmed
+   the break. The stop is identical in both, so entering beyond the level
+   widens the risk by however far the candle closed past it, and the fixed
+   target moves out with it: the same move must now travel further to pay
+   the same R. Every setup trades (no missed retests), so trade counts and
+   the outcome mix change too. `swing-seq` drops the 1H break and the
+   retest entirely: it enters at the close of the 4H candle that confirms
+   the `--swing-seq` Nth consecutive higher low (long) or lower high
+   (short), with the stop just beyond that swing. N=2 is "a second higher
+   low"; N=1 is simply "a higher low". Because the stop sits at the swing
+   the entry is measured from, risk is far tighter than either BOS mode.
+11. **Partial profit at +1R** (optional, `--partial-at-1r`) — closes
    `--partial-frac` of the position (default half) at +1R, banks it, and
    moves the stop to entry for the remainder, which runs to the `--rr`
    target. Outcomes per trade: never reached +1R and stopped = **−1R**

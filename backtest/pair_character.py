@@ -39,14 +39,14 @@ import os
 import statistics as stats
 from datetime import timedelta
 
-from backtest import load_candles, is_swing, pip_size, DATA_DIR
+from backtest import load_candles, is_swing, pip_size, data_dir, set_data_dir
 
 
 def discover_pairs() -> list[str]:
     out = set()
-    for p in glob.glob(os.path.join(DATA_DIR, "*_240.csv")):
+    for p in glob.glob(os.path.join(data_dir(), "*_240.csv")):
         name = os.path.basename(p)[:-len("_240.csv")]
-        if all(os.path.exists(os.path.join(DATA_DIR, f"{name}_{tf}.csv"))
+        if all(os.path.exists(os.path.join(data_dir(), f"{name}_{tf}.csv"))
                for tf in ("60", "240", "480", "1D")):
             out.add(name)
     return sorted(out)
@@ -271,12 +271,16 @@ def main():
                     help="1H bars a retest may take to arrive (default 24)")
     ap.add_argument("--bid-dir", default=None, help="dir of bid-priced CSVs, for spread")
     ap.add_argument("--ask-dir", default=None, help="dir of ask-priced CSVs, for spread")
+    ap.add_argument("--data-dir", default=None,
+                    help="directory holding the candle CSVs (default: data/)")
     ap.add_argument("--json", default=None, help="also write the full results here")
     cfg = ap.parse_args()
+    if cfg.data_dir:
+        set_data_dir(cfg.data_dir)
 
     pairs = cfg.pairs or discover_pairs()
     if not pairs:
-        raise SystemExit(f"no complete pair datasets found in {DATA_DIR}")
+        raise SystemExit(f"no complete pair datasets found in {data_dir()}")
     results = rank([analyse(p, cfg) for p in pairs])
 
     r0 = results[0]
