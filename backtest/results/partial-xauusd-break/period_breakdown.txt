@@ -1,0 +1,25 @@
+XAUUSD  ·  75 closed trades  ·  2023-11-03 to 2026-08-19
+overall: avg R +0.220  total +16.5R  P&L +1733
+
+BY CALENDAR YEAR
+  period       trades     W/P/L    avg R  total R       P&L   price move            
+  2023              6     1/0/5   -0.583     -3.5      -347   +1154p rising         
+  2024             27   11/3/13   +0.185     +5.0      +475   +5609p rising         
+  2025             26    12/5/9   +0.442    +11.5     +1213   +16933p rising        
+  2026             16     6/3/7   +0.219     +3.5      +392   +1267p rising         
+
+BY SIX-MONTH PERIOD
+  period       trades     W/P/L    avg R  total R       P&L   price move            
+  2023 H1           0         -        —        —         —
+  2023 H2           6     1/0/5   -0.583     -3.5      -347   +1154p rising         
+  2024 H1          11     4/0/7   -0.091     -1.0      -104   +2631p rising         
+  2024 H2          16     7/3/6   +0.375     +6.0      +579   +2975p rising         
+  2025 H1          14     6/3/5   +0.393     +5.5      +562   +6769p rising         
+  2025 H2          12     6/2/4   +0.500     +6.0      +651   +10155p rising        
+  2026 H1          13     5/2/6   +0.192     +2.5      +277   -3181p falling        
+  2026 H2           3     1/1/1   +0.333     +1.0      +115   +4410p rising         
+
+CONCENTRATION
+  best half-year:      2024 H2  +6.0R (36% of the run's total R)
+  profitable halves:   5 of 7
+  total R less the best half: +10.5R over 59 trades
