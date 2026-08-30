@@ -87,13 +87,11 @@ python3 scripts/fetch_dukascopy.py --pairs NAS100 --years 3   # -> data/NAS100_*
 python3 scripts/fetch_oanda.py --pairs NAS100 --years 3
 ```
 
-**Unverified from the development environment.** Both feeds are unreachable
-here, so the instrument names above and the 1e3 index price scale are
-convention rather than observation — the Nasdaq entries are the ones asked
-for and most likely correct; the other three are untested conveniences.
-`sanity_prices()` rejects an implausible median at fetch time and names the
-fix, and `--price-scale` overrides the table. If a fetch reports a median
-outside the plausible band, the scale is wrong, not the data.
+The codes above come from dukascopy-node's generated instrument metadata,
+so they are the names Dukascopy itself publishes rather than a guess. What
+is **not** verified here is either feed responding — both are unreachable
+from the development environment — so the OANDA CFD names and whether your
+OANDA division offers index CFDs at all still need checking on your side.
 
 ### Fetching a specific window
 
