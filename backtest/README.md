@@ -64,23 +64,24 @@ CSVs; each fetcher translates it to that source's own instrument string:
 | SPX500 | `USA500.IDX-USD` | `SPX500_USD` |
 | US30 | `USA30.IDX-USD` | `US30_USD` |
 
-**The legacy `.bi5` datafeed does not serve these.** `fetch_dukascopy.py`
-uses `datafeed.dukascopy.com/datafeed/{SYM}/{year}/{month0}/...bi5`, which
-works for FX but returns 503 for index instruments on every spelling tried.
-Dukascopy's own maintained client (dukascopy-node) no longer uses that path:
-it reads JSON from `https://jetta.dukascopy.com/v1`, addressing instruments
-by a `code` (`EUR-USD`, `USATECH.IDX-USD` — note the hyphen and the dot),
-with the month **1-based** rather than 0-based:
+`fetch_dukascopy.py` reads Dukascopy's current JSON API, the one their own
+maintained client uses:
 
 ```
-https://jetta.dukascopy.com/v1/candles/hour/USATECH.IDX-USD/BID/2024/1
+https://jetta.dukascopy.com/v1/candles/hour/{code}/{BID|ASK}/{year}/{month}
 ```
 
-**Index price scale: there is no fixed scale to configure.** The v1 response
-carries its own `multiplier`; prices are integer units reconstructed as
-`units * multiplier` from a base candle plus deltas. That supersedes the
-guessed 1e3 index entry in `PRICE_SCALE_TABLE`, which only ever applied to
-the .bi5 path and is unused for indices now.
+Note the month is **1-based** here (the retired `.bi5` datafeed used 0-based),
+and instruments are addressed by `code` — `EUR-USD`, `USATECH.IDX-USD`. FX
+and metals are derived automatically (`EURUSD` -> `EUR-USD`); indices come
+from `DUKASCOPY_V1_CODE`. The old `.bi5` path served FX but returned 503 for
+every index spelling, which is why it was replaced.
+
+**There is no price scale to configure any more.** Each response carries its
+own `multiplier`: prices arrive as integer units, reconstructed as
+`units * multiplier` from a base candle plus per-bar deltas, with bars the
+feed skipped filled flat at the previous close. `--price-scale` is accepted
+but ignored, and the guessed per-instrument scales are gone.
 
 ```bash
 python3 scripts/fetch_dukascopy.py --pairs NAS100 --years 3   # -> data/NAS100_*.csv
