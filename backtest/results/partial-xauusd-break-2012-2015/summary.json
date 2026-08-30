@@ -1,0 +1,61 @@
+{
+  "pairs": [
+    "XAUUSD"
+  ],
+  "config": {
+    "swing_n": 2,
+    "retest_window_bars": 24,
+    "sl_mode": "origin-swing",
+    "sl_buffer_pips": 1.0,
+    "rr": 2.0,
+    "risk_pct": 1.0,
+    "start_equity": 10000.0,
+    "entry_mode": "break-close",
+    "swing_seq": 2,
+    "breakeven": false,
+    "partial_at_1r": true,
+    "partial_frac": 0.5,
+    "warmup_swings": 10,
+    "min_break_pips": 0.0,
+    "min_break_atr": 0.1,
+    "trend_mode": "break"
+  },
+  "total_trades": 74,
+  "wins": 24,
+  "losses": 33,
+  "scratches": 0,
+  "partials": 17,
+  "open_at_end": 1,
+  "ambiguous_bars": 1,
+  "setup_fates": {
+    "XAUUSD": {
+      "created": 0,
+      "filled": 0,
+      "bias_flip": 0,
+      "window_expired": 0,
+      "superseded": 0,
+      "pending_at_end": 0,
+      "fill_wait_median_bars": null,
+      "fill_wait_mean_bars": null,
+      "fill_wait_max_bars": null
+    }
+  },
+  "win_rate_pct": 32.43,
+  "profit_factor": 1.323,
+  "net_profit": 1167.85,
+  "net_return_pct": 11.68,
+  "max_drawdown_pct": 5.44,
+  "avg_r": 0.155,
+  "total_r": 11.5,
+  "final_equity": 11167.85,
+  "per_pair": {
+    "XAUUSD": {
+      "trades": 74,
+      "wins": 24,
+      "partials": 17,
+      "win_rate_pct": 32.43,
+      "avg_r": 0.155,
+      "pnl": 1167.85
+    }
+  }
+}
