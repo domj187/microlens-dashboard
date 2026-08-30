@@ -1,0 +1,317 @@
+[
+  {
+    "pair": "USDJPY",
+    "bars": {
+      "h1": 18209,
+      "h4": 4554,
+      "d1": 761
+    },
+    "range": [
+      "2023-08-29",
+      "2026-07-31"
+    ],
+    "swing_legs": 958,
+    "swing_median_pips": 106.0,
+    "swing_mean_pips": 130.6,
+    "swing_atr_median": 2.35,
+    "breaks": 577,
+    "followthrough_pct": 48.4,
+    "reversal_pct": 51.3,
+    "unresolved_pct": 0.3,
+    "ft_to_rev": 0.94,
+    "edge_vs_random_pp": 15.0,
+    "retest_pct": 76.1,
+    "daily_runs": 32,
+    "daily_persistence_median": 23.0,
+    "daily_persistence_mean": 23.3,
+    "spread_pips": null,
+    "spread_pct_of_swing": null,
+    "score": 0.672,
+    "score_parts": {
+      "follow_through": 1.0,
+      "retest_offered": 0.0,
+      "trend_persistence": 1.0,
+      "swing_size_atr": 0.36
+    }
+  },
+  {
+    "pair": "NAS100",
+    "bars": {
+      "h1": 17659,
+      "h4": 4616,
+      "d1": 774
+    },
+    "range": [
+      "2023-08-30",
+      "2026-08-28"
+    ],
+    "swing_legs": 971,
+    "swing_median_pips": 314.9,
+    "swing_mean_pips": 395.4,
+    "swing_atr_median": 2.65,
+    "breaks": 619,
+    "followthrough_pct": 43.3,
+    "reversal_pct": 56.1,
+    "unresolved_pct": 0.6,
+    "ft_to_rev": 0.77,
+    "edge_vs_random_pp": 10.0,
+    "retest_pct": 77.1,
+    "daily_runs": 43,
+    "daily_persistence_median": 15,
+    "daily_persistence_mean": 17.7,
+    "spread_pips": null,
+    "spread_pct_of_swing": null,
+    "score": 0.524,
+    "score_parts": {
+      "follow_through": 0.64,
+      "retest_offered": 0.14,
+      "trend_persistence": 0.2,
+      "swing_size_atr": 1.0
+    }
+  },
+  {
+    "pair": "EURUSD",
+    "bars": {
+      "h1": 18247,
+      "h4": 4564,
+      "d1": 763
+    },
+    "range": [
+      "2023-08-25",
+      "2026-07-31"
+    ],
+    "swing_legs": 994,
+    "swing_median_pips": 60.2,
+    "swing_mean_pips": 70.3,
+    "swing_atr_median": 2.39,
+    "breaks": 616,
+    "followthrough_pct": 40.9,
+    "reversal_pct": 58.4,
+    "unresolved_pct": 0.6,
+    "ft_to_rev": 0.7,
+    "edge_vs_random_pp": 7.6,
+    "retest_pct": 77.1,
+    "daily_runs": 36,
+    "daily_persistence_median": 20.5,
+    "daily_persistence_mean": 21.1,
+    "spread_pips": null,
+    "spread_pct_of_swing": null,
+    "score": 0.455,
+    "score_parts": {
+      "follow_through": 0.47,
+      "retest_offered": 0.14,
+      "trend_persistence": 0.75,
+      "swing_size_atr": 0.45
+    }
+  },
+  {
+    "pair": "EURCHF",
+    "bars": {
+      "h1": 18241,
+      "h4": 4563,
+      "d1": 763
+    },
+    "range": [
+      "2023-08-25",
+      "2026-07-31"
+    ],
+    "swing_legs": 960,
+    "swing_median_pips": 37.8,
+    "swing_mean_pips": 46.4,
+    "swing_atr_median": 2.27,
+    "breaks": 546,
+    "followthrough_pct": 40.3,
+    "reversal_pct": 59.0,
+    "unresolved_pct": 0.7,
+    "ft_to_rev": 0.68,
+    "edge_vs_random_pp": 7.0,
+    "retest_pct": 82.1,
+    "daily_runs": 39,
+    "daily_persistence_median": 15,
+    "daily_persistence_mean": 19.3,
+    "spread_pips": null,
+    "spread_pct_of_swing": null,
+    "score": 0.412,
+    "score_parts": {
+      "follow_through": 0.43,
+      "retest_offered": 0.81,
+      "trend_persistence": 0.2,
+      "swing_size_atr": 0.19
+    }
+  },
+  {
+    "pair": "GBPJPY",
+    "bars": {
+      "h1": 18208,
+      "h4": 4554,
+      "d1": 761
+    },
+    "range": [
+      "2023-08-29",
+      "2026-07-31"
+    ],
+    "swing_legs": 964,
+    "swing_median_pips": 131.5,
+    "swing_mean_pips": 163.1,
+    "swing_atr_median": 2.28,
+    "breaks": 587,
+    "followthrough_pct": 42.8,
+    "reversal_pct": 57.1,
+    "unresolved_pct": 0.2,
+    "ft_to_rev": 0.75,
+    "edge_vs_random_pp": 9.4,
+    "retest_pct": 78.2,
+    "daily_runs": 37,
+    "daily_persistence_median": 16,
+    "daily_persistence_mean": 20.3,
+    "spread_pips": null,
+    "spread_pct_of_swing": null,
+    "score": 0.399,
+    "score_parts": {
+      "follow_through": 0.6,
+      "retest_offered": 0.28,
+      "trend_persistence": 0.3,
+      "swing_size_atr": 0.21
+    }
+  },
+  {
+    "pair": "CADJPY",
+    "bars": {
+      "h1": 18181,
+      "h4": 4548,
+      "d1": 760
+    },
+    "range": [
+      "2023-08-30",
+      "2026-07-31"
+    ],
+    "swing_legs": 944,
+    "swing_median_pips": 79.9,
+    "swing_mean_pips": 96.4,
+    "swing_atr_median": 2.35,
+    "breaks": 594,
+    "followthrough_pct": 37.4,
+    "reversal_pct": 62.3,
+    "unresolved_pct": 0.3,
+    "ft_to_rev": 0.6,
+    "edge_vs_random_pp": 4.0,
+    "retest_pct": 80.5,
+    "daily_runs": 38,
+    "daily_persistence_median": 16.0,
+    "daily_persistence_mean": 19.7,
+    "spread_pips": null,
+    "spread_pct_of_swing": null,
+    "score": 0.337,
+    "score_parts": {
+      "follow_through": 0.21,
+      "retest_offered": 0.59,
+      "trend_persistence": 0.3,
+      "swing_size_atr": 0.36
+    }
+  },
+  {
+    "pair": "AUDCHF",
+    "bars": {
+      "h1": 18244,
+      "h4": 4564,
+      "d1": 763
+    },
+    "range": [
+      "2023-08-25",
+      "2026-07-31"
+    ],
+    "swing_legs": 987,
+    "swing_median_pips": 38.0,
+    "swing_mean_pips": 46.5,
+    "swing_atr_median": 2.18,
+    "breaks": 576,
+    "followthrough_pct": 35.2,
+    "reversal_pct": 63.2,
+    "unresolved_pct": 1.6,
+    "ft_to_rev": 0.56,
+    "edge_vs_random_pp": 1.9,
+    "retest_pct": 83.5,
+    "daily_runs": 37,
+    "daily_persistence_median": 18,
+    "daily_persistence_mean": 20.2,
+    "spread_pips": null,
+    "spread_pct_of_swing": null,
+    "score": 0.326,
+    "score_parts": {
+      "follow_through": 0.06,
+      "retest_offered": 1.0,
+      "trend_persistence": 0.5,
+      "swing_size_atr": 0.0
+    }
+  },
+  {
+    "pair": "GBPUSD",
+    "bars": {
+      "h1": 18230,
+      "h4": 4560,
+      "d1": 762
+    },
+    "range": [
+      "2023-08-28",
+      "2026-07-31"
+    ],
+    "swing_legs": 988,
+    "swing_median_pips": 73.8,
+    "swing_mean_pips": 84.7,
+    "swing_atr_median": 2.36,
+    "breaks": 600,
+    "followthrough_pct": 38.3,
+    "reversal_pct": 60.7,
+    "unresolved_pct": 1.0,
+    "ft_to_rev": 0.63,
+    "edge_vs_random_pp": 5.0,
+    "retest_pct": 79.5,
+    "daily_runs": 43,
+    "daily_persistence_median": 13,
+    "daily_persistence_mean": 17.4,
+    "spread_pips": null,
+    "spread_pct_of_swing": null,
+    "score": 0.283,
+    "score_parts": {
+      "follow_through": 0.29,
+      "retest_offered": 0.46,
+      "trend_persistence": 0.0,
+      "swing_size_atr": 0.38
+    }
+  },
+  {
+    "pair": "AUDUSD",
+    "bars": {
+      "h1": 18246,
+      "h4": 4564,
+      "d1": 763
+    },
+    "range": [
+      "2023-08-25",
+      "2026-07-31"
+    ],
+    "swing_legs": 984,
+    "swing_median_pips": 50.5,
+    "swing_mean_pips": 59.4,
+    "swing_atr_median": 2.32,
+    "breaks": 608,
+    "followthrough_pct": 34.4,
+    "reversal_pct": 64.8,
+    "unresolved_pct": 0.8,
+    "ft_to_rev": 0.53,
+    "edge_vs_random_pp": 1.0,
+    "retest_pct": 79.8,
+    "daily_runs": 40,
+    "daily_persistence_median": 14.0,
+    "daily_persistence_mean": 18.9,
+    "spread_pips": null,
+    "spread_pct_of_swing": null,
+    "score": 0.18,
+    "score_parts": {
+      "follow_through": 0.0,
+      "retest_offered": 0.5,
+      "trend_persistence": 0.1,
+      "swing_size_atr": 0.3
+    }
+  }
+]

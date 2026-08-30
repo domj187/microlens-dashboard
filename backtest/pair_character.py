@@ -229,8 +229,16 @@ def analyse(pair: str, cfg) -> dict:
     return res
 
 
-def rank(results: list[dict]) -> list[dict]:
-    """Score each pair on the properties a break-and-retest system needs."""
+def rank(results: list[dict], swing_metric: str = "atr") -> list[dict]:
+    """Score each pair on the properties a break-and-retest system needs.
+
+    swing_metric picks how the swing-size component is measured. "pips" is
+    not comparable across instruments whose pip means different things — an
+    index quoted in points (pip 1.0) posts numerically huge swings next to
+    EURUSD's, and normalising that column hands the index the top score on
+    units alone. "atr" divides each swing by that instrument's own 4H ATR,
+    which is unitless and is the default for that reason.
+    """
     def norm(vals):
         lo, hi = min(vals), max(vals)
         return [0.5] * len(vals) if hi == lo else [(v - lo) / (hi - lo) for v in vals]
@@ -238,11 +246,12 @@ def rank(results: list[dict]) -> list[dict]:
     ok = [r for r in results if r["followthrough_pct"] is not None]
     if not ok:
         return results
+    swing_key = ("swing_atr_median" if swing_metric == "atr" else "swing_median_pips")
     comps = {
         "follow_through": ([r["edge_vs_random_pp"] for r in ok], 0.40),
         "retest_offered": ([r["retest_pct"] for r in ok], 0.20),
         "trend_persistence": ([r["daily_persistence_median"] or 0 for r in ok], 0.20),
-        "swing_size": ([r["swing_median_pips"] or 0 for r in ok], 0.20),
+        f"swing_size_{swing_metric}": ([r[swing_key] or 0 for r in ok], 0.20),
     }
     scores = {r["pair"]: 0.0 for r in ok}
     parts = {r["pair"]: {} for r in ok}
@@ -273,6 +282,10 @@ def main():
     ap.add_argument("--ask-dir", default=None, help="dir of ask-priced CSVs, for spread")
     ap.add_argument("--data-dir", default=None,
                     help="directory holding the candle CSVs (default: data/)")
+    ap.add_argument("--swing-metric", choices=["atr", "pips"], default="atr",
+                    help="how the ranking measures swing size: atr (default, "
+                         "unitless, comparable across instruments) or pips "
+                         "(raw, only meaningful within one asset class)")
     ap.add_argument("--json", default=None, help="also write the full results here")
     cfg = ap.parse_args()
     if cfg.data_dir:
@@ -281,7 +294,7 @@ def main():
     pairs = cfg.pairs or discover_pairs()
     if not pairs:
         raise SystemExit(f"no complete pair datasets found in {data_dir()}")
-    results = rank([analyse(p, cfg) for p in pairs])
+    results = rank([analyse(p, cfg) for p in pairs], cfg.swing_metric)
 
     r0 = results[0]
     print(f"Data range: {r0['range'][0]} to {r0['range'][1]}   "
@@ -326,7 +339,8 @@ def main():
         print("  sets (scripts/fetch_dukascopy.py --price bid|ask) and pass")
         print("  --bid-dir/--ask-dir to include spread in the ranking.")
 
-    print("\nRANKING for a structure-break-and-retest system")
+    print(f"\nRANKING for a structure-break-and-retest system "
+          f"(swing size in {'ATR' if cfg.swing_metric == 'atr' else 'pips'})")
     for i, r in enumerate(results, 1):
         if "score" not in r:
             continue
