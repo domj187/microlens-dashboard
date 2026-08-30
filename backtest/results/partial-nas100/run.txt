@@ -1,0 +1,21 @@
+NAS100: 74 closed trades
+
+Total trades:   74  (wins 22 / losses 41 / scratches 0 / partials 11, open at end: 1)
+Win rate:       29.73%
+Profit factor:  0.929
+Net return:     -2.92%  (final equity 9,707.84)
+Max drawdown:   9.15%
+Avg R / trade:  -0.034  (total -2.5R)
+Ambiguous bars (counted as per conservative rules): 0
+
+Setups: what happened between the BOS and the retest
+  pair       created  filled  bias flip  expired  superseded   flip %  median wait
+  NAS100          93      75          0        1          17     0.0%       1 bars
+  (superseded = a later BOS replaced the pending setup before it filled;
+   median wait = 1H bars from the BOS to the fill, i.e. how long a
+   setup is actually exposed to a bias change)
+
+Per pair:
+  NAS100: 74 trades, win rate 29.73%, pnl -292.16
+
+Outputs written to backtest/results/partial-nas100/ (trades.csv, equity_curve.csv, equity_curve.svg, summary.json)

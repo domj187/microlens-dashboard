@@ -39,6 +39,7 @@ import argparse
 import csv
 import json
 import os
+import statistics
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -364,6 +365,12 @@ def close_at_entry(pos: Trade, cfg) -> None:
         pos.result, pos.r_multiple = "scratch", 0.0
 
 
+# Per-pair setup-fate counters from the most recent run_pair() call, keyed by
+# pair. Kept beside the trades rather than inside them because a setup that
+# never fills produces no Trade to hang the reason on.
+SETUP_FATES: dict[str, dict[str, int]] = {}
+
+
 def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
     h1 = load_candles(pair, "60")
     h4 = StructureTracker(load_candles(pair, "240"), cfg.swing_n)
@@ -378,6 +385,11 @@ def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
     trades: list[Trade] = []
     setup: Setup | None = None
     pos: Trade | None = None
+    # what happened to every BOS setup that was created: it filled, or it died
+    # one of three ways before the retest arrived.
+    fates = {"created": 0, "filled": 0, "bias_flip": 0,
+             "window_expired": 0, "superseded": 0, "pending_at_end": 0}
+    waits: list[int] = []         # 1H bars each setup waited before filling
 
     for c in h1:
         t = c.close_time
@@ -431,6 +443,7 @@ def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
         # ---- 2) pending setup: cancel / fill on the retest
         if setup is not None and pos is None:
             if bias != setup.direction:
+                fates["bias_flip"] += 1
                 setup = None
             else:
                 setup.bars_left -= 1
@@ -442,6 +455,8 @@ def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
                     entry = max(c.o, setup.level)
                     filled = entry if entry < setup.sl else None
                 if filled is not None:
+                    fates["filled"] += 1
+                    waits.append(cfg.retest_window - setup.bars_left)
                     risk = abs(filled - setup.sl)
                     tp = filled + cfg.rr * risk if setup.direction == "long" else filled - cfg.rr * risk
                     pos = Trade(pair, setup.direction, setup.bos_time, t, filled, setup.sl, tp,
@@ -465,6 +480,7 @@ def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
                         trades.append(pos)
                         pos = None
                 elif setup is not None and setup.bars_left <= 0:
+                    fates["window_expired"] += 1
                     setup = None
 
         # ---- 3) entry
@@ -515,6 +531,9 @@ def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
                             pos = Trade(pair, "long", t, t, c.c, sl,
                                         c.c + cfg.rr * risk, orig_sl=sl)
                     elif sl < broken_high.price:
+                        if setup is not None:
+                            fates["superseded"] += 1
+                        fates["created"] += 1
                         setup = Setup("long", broken_high.price, sl, t, cfg.retest_window)
             elif bias == "short" and broken_low is not None:
                 origin = h4.latest_high()
@@ -530,7 +549,19 @@ def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
                             pos = Trade(pair, "short", t, t, c.c, sl,
                                         c.c - cfg.rr * risk, orig_sl=sl)
                     elif sl > broken_low.price:
+                        if setup is not None:
+                            fates["superseded"] += 1
+                        fates["created"] += 1
                         setup = Setup("short", broken_low.price, sl, t, cfg.retest_window)
+
+    if setup is not None:
+        fates["pending_at_end"] += 1
+    # How long a setup is exposed to a bias change is the whole reason the
+    # bias-flip count is what it is, so report it beside the fates.
+    fates["fill_wait_median_bars"] = (statistics.median(waits) if waits else None)
+    fates["fill_wait_mean_bars"] = (round(statistics.fmean(waits), 1) if waits else None)
+    fates["fill_wait_max_bars"] = (max(waits) if waits else None)
+    SETUP_FATES[pair] = fates
 
     if pos is not None:  # still open at end of data
         pos.result = "open"
@@ -608,6 +639,7 @@ def run_portfolio(all_trades: list[Trade], cfg: argparse.Namespace):
         "partials": len(partials),
         "open_at_end": sum(1 for tr in all_trades if tr.result == "open"),
         "ambiguous_bars": sum(1 for tr in closed if tr.ambiguous),
+        "setup_fates": {k: dict(v) for k, v in sorted(SETUP_FATES.items())},
         "win_rate_pct": round(100.0 * len(wins) / len(closed), 2) if closed else None,
         "profit_factor": round(gross_win / gross_loss, 3) if gross_loss else None,
         "net_profit": round(equity - cfg.start_equity, 2),
@@ -816,6 +848,30 @@ def main():
     print(f"Max drawdown:   {summary['max_drawdown_pct']}%")
     print(f"Avg R / trade:  {summary['avg_r']}  (total {summary['total_r']}R)")
     print(f"Ambiguous bars (counted as per conservative rules): {summary['ambiguous_bars']}")
+
+    fates = summary.get("setup_fates") or {}
+    if fates and cfg.entry_mode == "retest":
+        print("\nSetups: what happened between the BOS and the retest")
+        print(f"  {'pair':<9}{'created':>9}{'filled':>8}{'bias flip':>11}"
+              f"{'expired':>9}{'superseded':>12}{'flip %':>9}{'median wait':>13}")
+        tot = {k: 0 for k in ("created", "filled", "bias_flip",
+                              "window_expired", "superseded")}
+        for pr, f in fates.items():
+            for k in tot:
+                tot[k] += f[k]
+            w = f.get("fill_wait_median_bars")
+            print(f"  {pr:<9}{f['created']:>9}{f['filled']:>8}{f['bias_flip']:>11}"
+                  f"{f['window_expired']:>9}{f['superseded']:>12}"
+                  f"{(100*f['bias_flip']/f['created'] if f['created'] else 0):>8.1f}%"
+                  f"{('—' if w is None else f'{w:.0f} bars'):>13}")
+        if len(fates) > 1:
+            print(f"  {'ALL':<9}{tot['created']:>9}{tot['filled']:>8}"
+                  f"{tot['bias_flip']:>11}{tot['window_expired']:>9}"
+                  f"{tot['superseded']:>12}"
+                  f"{(100*tot['bias_flip']/tot['created'] if tot['created'] else 0):>8.1f}%")
+        print("  (superseded = a later BOS replaced the pending setup before it"
+              " filled;\n   median wait = 1H bars from the BOS to the fill, i.e. how"
+              " long a\n   setup is actually exposed to a bias change)")
     if "breakeven_mechanics" in summary:
         m = summary["breakeven_mechanics"]
         sw = m["scratched_would_have_hit"]

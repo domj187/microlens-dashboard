@@ -1,0 +1,46 @@
+AUDCHF: 32 closed trades
+AUDUSD: 58 closed trades
+CADJPY: 62 closed trades
+EURCHF: 27 closed trades
+EURUSD: 70 closed trades
+GBPJPY: 65 closed trades
+GBPUSD: 53 closed trades
+NAS100: 74 closed trades
+USDJPY: 58 closed trades
+
+Total trades:   499  (wins 123 / losses 241 / scratches 0 / partials 135, open at end: 6)
+Win rate:       24.65%
+Profit factor:  1.015
+Net return:     4.37%  (final equity 10,436.95)
+Max drawdown:   37.41%
+Avg R / trade:  0.022  (total 11.0R)
+Ambiguous bars (counted as per conservative rules): 9
+
+Setups: what happened between the BOS and the retest
+  pair       created  filled  bias flip  expired  superseded   flip %  median wait
+  AUDCHF          38      33          0        1           4     0.0%       1 bars
+  AUDUSD          78      59          0        5          14     0.0%       1 bars
+  CADJPY          76      63          0        2          11     0.0%       1 bars
+  EURCHF          39      27          0        4           8     0.0%       1 bars
+  EURUSD          88      71          0        4          13     0.0%       1 bars
+  GBPJPY          80      65          0        2          12     0.0%       1 bars
+  GBPUSD          63      53          0        0          10     0.0%       1 bars
+  NAS100          93      75          0        1          17     0.0%       1 bars
+  USDJPY          73      59          0        5           9     0.0%       1 bars
+  ALL            628     505          0       24          98     0.0%
+  (superseded = a later BOS replaced the pending setup before it filled;
+   median wait = 1H bars from the BOS to the fill, i.e. how long a
+   setup is actually exposed to a bias change)
+
+Per pair:
+  AUDCHF: 32 trades, win rate 18.75%, pnl 262.61
+  AUDUSD: 58 trades, win rate 18.97%, pnl -456.02
+  CADJPY: 62 trades, win rate 22.58%, pnl -691.27
+  EURCHF: 27 trades, win rate 29.63%, pnl 312.28
+  EURUSD: 70 trades, win rate 22.86%, pnl -785.84
+  GBPJPY: 65 trades, win rate 27.69%, pnl 370.15
+  GBPUSD: 53 trades, win rate 16.98%, pnl 573.18
+  NAS100: 74 trades, win rate 29.73%, pnl -364.38
+  USDJPY: 58 trades, win rate 32.76%, pnl 1,216.24
+
+Outputs written to backtest/results/partial-all9/ (trades.csv, equity_curve.csv, equity_curve.svg, summary.json)

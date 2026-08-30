@@ -1,0 +1,60 @@
+{
+  "pairs": [
+    "NAS100"
+  ],
+  "config": {
+    "swing_n": 2,
+    "retest_window_bars": 24,
+    "sl_mode": "origin-swing",
+    "sl_buffer_pips": 1.0,
+    "rr": 2.0,
+    "risk_pct": 1.0,
+    "start_equity": 10000.0,
+    "entry_mode": "retest",
+    "swing_seq": 2,
+    "breakeven": false,
+    "partial_at_1r": true,
+    "partial_frac": 0.5,
+    "warmup_swings": 10,
+    "min_break_pips": 5.0,
+    "trend_mode": "break"
+  },
+  "total_trades": 74,
+  "wins": 22,
+  "losses": 41,
+  "scratches": 0,
+  "partials": 11,
+  "open_at_end": 1,
+  "ambiguous_bars": 0,
+  "setup_fates": {
+    "NAS100": {
+      "created": 93,
+      "filled": 75,
+      "bias_flip": 0,
+      "window_expired": 1,
+      "superseded": 17,
+      "pending_at_end": 0,
+      "fill_wait_median_bars": 1,
+      "fill_wait_mean_bars": 2.9,
+      "fill_wait_max_bars": 18
+    }
+  },
+  "win_rate_pct": 29.73,
+  "profit_factor": 0.929,
+  "net_profit": -292.16,
+  "net_return_pct": -2.92,
+  "max_drawdown_pct": 9.15,
+  "avg_r": -0.034,
+  "total_r": -2.5,
+  "final_equity": 9707.84,
+  "per_pair": {
+    "NAS100": {
+      "trades": 74,
+      "wins": 22,
+      "partials": 11,
+      "win_rate_pct": 29.73,
+      "avg_r": -0.034,
+      "pnl": -292.16
+    }
+  }
+}

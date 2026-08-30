@@ -1,0 +1,220 @@
+{
+  "pairs": [
+    "AUDCHF",
+    "AUDUSD",
+    "CADJPY",
+    "EURCHF",
+    "EURUSD",
+    "GBPJPY",
+    "GBPUSD",
+    "NAS100",
+    "USDJPY"
+  ],
+  "config": {
+    "swing_n": 2,
+    "retest_window_bars": 24,
+    "sl_mode": "origin-swing",
+    "sl_buffer_pips": 1.0,
+    "rr": 2.0,
+    "risk_pct": 1.0,
+    "start_equity": 10000.0,
+    "entry_mode": "retest",
+    "swing_seq": 2,
+    "breakeven": false,
+    "partial_at_1r": true,
+    "partial_frac": 0.5,
+    "warmup_swings": 10,
+    "min_break_pips": 5.0,
+    "trend_mode": "break"
+  },
+  "total_trades": 499,
+  "wins": 123,
+  "losses": 241,
+  "scratches": 0,
+  "partials": 135,
+  "open_at_end": 6,
+  "ambiguous_bars": 9,
+  "setup_fates": {
+    "AUDCHF": {
+      "created": 38,
+      "filled": 33,
+      "bias_flip": 0,
+      "window_expired": 1,
+      "superseded": 4,
+      "pending_at_end": 0,
+      "fill_wait_median_bars": 1,
+      "fill_wait_mean_bars": 2.0,
+      "fill_wait_max_bars": 13
+    },
+    "AUDUSD": {
+      "created": 78,
+      "filled": 59,
+      "bias_flip": 0,
+      "window_expired": 5,
+      "superseded": 14,
+      "pending_at_end": 0,
+      "fill_wait_median_bars": 1,
+      "fill_wait_mean_bars": 2.3,
+      "fill_wait_max_bars": 20
+    },
+    "CADJPY": {
+      "created": 76,
+      "filled": 63,
+      "bias_flip": 0,
+      "window_expired": 2,
+      "superseded": 11,
+      "pending_at_end": 0,
+      "fill_wait_median_bars": 1,
+      "fill_wait_mean_bars": 2.7,
+      "fill_wait_max_bars": 20
+    },
+    "EURCHF": {
+      "created": 39,
+      "filled": 27,
+      "bias_flip": 0,
+      "window_expired": 4,
+      "superseded": 8,
+      "pending_at_end": 0,
+      "fill_wait_median_bars": 1,
+      "fill_wait_mean_bars": 1.6,
+      "fill_wait_max_bars": 8
+    },
+    "EURUSD": {
+      "created": 88,
+      "filled": 71,
+      "bias_flip": 0,
+      "window_expired": 4,
+      "superseded": 13,
+      "pending_at_end": 0,
+      "fill_wait_median_bars": 1,
+      "fill_wait_mean_bars": 2.7,
+      "fill_wait_max_bars": 17
+    },
+    "GBPJPY": {
+      "created": 80,
+      "filled": 65,
+      "bias_flip": 0,
+      "window_expired": 2,
+      "superseded": 12,
+      "pending_at_end": 1,
+      "fill_wait_median_bars": 1,
+      "fill_wait_mean_bars": 1.6,
+      "fill_wait_max_bars": 11
+    },
+    "GBPUSD": {
+      "created": 63,
+      "filled": 53,
+      "bias_flip": 0,
+      "window_expired": 0,
+      "superseded": 10,
+      "pending_at_end": 0,
+      "fill_wait_median_bars": 1,
+      "fill_wait_mean_bars": 1.8,
+      "fill_wait_max_bars": 9
+    },
+    "NAS100": {
+      "created": 93,
+      "filled": 75,
+      "bias_flip": 0,
+      "window_expired": 1,
+      "superseded": 17,
+      "pending_at_end": 0,
+      "fill_wait_median_bars": 1,
+      "fill_wait_mean_bars": 2.9,
+      "fill_wait_max_bars": 18
+    },
+    "USDJPY": {
+      "created": 73,
+      "filled": 59,
+      "bias_flip": 0,
+      "window_expired": 5,
+      "superseded": 9,
+      "pending_at_end": 0,
+      "fill_wait_median_bars": 1,
+      "fill_wait_mean_bars": 2.5,
+      "fill_wait_max_bars": 21
+    }
+  },
+  "win_rate_pct": 24.65,
+  "profit_factor": 1.015,
+  "net_profit": 436.95,
+  "net_return_pct": 4.37,
+  "max_drawdown_pct": 37.41,
+  "avg_r": 0.022,
+  "total_r": 11.0,
+  "final_equity": 10436.95,
+  "per_pair": {
+    "AUDCHF": {
+      "trades": 32,
+      "wins": 6,
+      "partials": 13,
+      "win_rate_pct": 18.75,
+      "avg_r": 0.078,
+      "pnl": 262.61
+    },
+    "AUDUSD": {
+      "trades": 58,
+      "wins": 11,
+      "partials": 18,
+      "win_rate_pct": 18.97,
+      "avg_r": -0.06,
+      "pnl": -456.02
+    },
+    "CADJPY": {
+      "trades": 62,
+      "wins": 14,
+      "partials": 16,
+      "win_rate_pct": 22.58,
+      "avg_r": -0.048,
+      "pnl": -691.27
+    },
+    "EURCHF": {
+      "trades": 27,
+      "wins": 8,
+      "partials": 7,
+      "win_rate_pct": 29.63,
+      "avg_r": 0.13,
+      "pnl": 312.28
+    },
+    "EURUSD": {
+      "trades": 70,
+      "wins": 16,
+      "partials": 16,
+      "win_rate_pct": 22.86,
+      "avg_r": -0.086,
+      "pnl": -785.84
+    },
+    "GBPJPY": {
+      "trades": 65,
+      "wins": 18,
+      "partials": 15,
+      "win_rate_pct": 27.69,
+      "avg_r": 0.038,
+      "pnl": 370.15
+    },
+    "GBPUSD": {
+      "trades": 53,
+      "wins": 9,
+      "partials": 24,
+      "win_rate_pct": 16.98,
+      "avg_r": 0.104,
+      "pnl": 573.18
+    },
+    "NAS100": {
+      "trades": 74,
+      "wins": 22,
+      "partials": 11,
+      "win_rate_pct": 29.73,
+      "avg_r": -0.034,
+      "pnl": -364.38
+    },
+    "USDJPY": {
+      "trades": 58,
+      "wins": 19,
+      "partials": 15,
+      "win_rate_pct": 32.76,
+      "avg_r": 0.207,
+      "pnl": 1216.24
+    }
+  }
+}
