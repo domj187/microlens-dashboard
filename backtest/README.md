@@ -39,6 +39,7 @@ reported pip figures mean a comparable distance everywhere:
 | JPY crosses | 0.01 | 3-decimal quotes |
 | XAUUSD | 0.1 | ten cents — gold's conventional pip; puts its ~$15-20 4H swings on the same 150-200 scale as the JPY crosses and keeps a 1-pip stop buffer at 10c rather than $1 |
 | XAGUSD | 0.01 | one cent |
+| NAS100, SPX500, US30, GER40 | 1.0 | one index point — indices are not FX; at ~20,000 with 150-400 point 4H swings this puts them on the same 100-400 scale as the JPY crosses and gold, and keeps a 1-pip stop buffer at 1 point |
 
 Fetching a metal also needs the right integer price scale. Dukascopy is
 believed to serve XAUUSD at 1e3, but that is **unverified** — the feed is
@@ -51,6 +52,31 @@ python3 scripts/fetch_dukascopy.py --pairs XAUUSD --years 3
 # if it reports an implausible median close:
 python3 scripts/fetch_dukascopy.py --pairs XAUUSD --years 3 --price-scale 100
 ```
+
+### Indices
+
+The repo's symbol is the short broker-style name (`NAS100`), which names the
+CSVs; each fetcher translates it to that source's own instrument string:
+
+| Symbol | Dukascopy datafeed | OANDA v20 |
+|---|---|---|
+| NAS100 | `USATECHIDXUSD` | `NAS100_USD` |
+| SPX500 | `USA500IDXUSD` | `SPX500_USD` |
+| US30 | `USA30IDXUSD` | `US30_USD` |
+| GER40 | `DEUIDXEUR` | `DE30_EUR` |
+
+```bash
+python3 scripts/fetch_dukascopy.py --pairs NAS100 --years 3   # -> data/NAS100_*.csv
+python3 scripts/fetch_oanda.py --pairs NAS100 --years 3
+```
+
+**Unverified from the development environment.** Both feeds are unreachable
+here, so the instrument names above and the 1e3 index price scale are
+convention rather than observation — the Nasdaq entries are the ones asked
+for and most likely correct; the other three are untested conveniences.
+`sanity_prices()` rejects an implausible median at fetch time and names the
+fix, and `--price-scale` overrides the table. If a fetch reports a median
+outside the plausible band, the scale is wrong, not the data.
 
 ### Fetching a specific window
 

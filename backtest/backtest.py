@@ -79,7 +79,12 @@ def set_data_dir(path: str) -> None:
 #                       same 100-200 scale as the JPY crosses, and keeps a
 #                       1-pip stop buffer at a sane 10 cents rather than $1.
 #   XAGUSD      0.01    one cent, the same convention one decimal down
-PIP_SIZES = {"XAUUSD": 0.1, "XAGUSD": 0.01}
+#   NAS100      1.0     one index point. Indices are not FX: at ~20,000 with
+#                       150-400 point 4H swings this puts them on the same
+#                       100-400 scale as the JPY crosses and gold, and keeps
+#                       a 1-pip stop buffer at 1 point rather than 0.0001.
+PIP_SIZES = {"XAUUSD": 0.1, "XAGUSD": 0.01, "NAS100": 1.0,
+             "SPX500": 1.0, "US30": 1.0, "GER40": 1.0}
 
 
 def pip_size(pair: str) -> float:

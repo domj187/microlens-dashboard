@@ -50,12 +50,29 @@ PRICE_SCALE_JPY = 1e3
 # (the feed is unreachable from this environment), so it is stated openly
 # and guarded: sanity_prices() rejects an implausible result at fetch time,
 # and --price-scale overrides the table if the feed disagrees.
-PRICE_SCALE_TABLE = {"XAUUSD": 1e3, "XAGUSD": 1e3}
+PRICE_SCALE_TABLE = {"XAUUSD": 1e3, "XAGUSD": 1e3,
+                     "NAS100": 1e3, "SPX500": 1e3, "US30": 1e3, "GER40": 1e3}
+
+# Dukascopy names indices descriptively (JForex "USATECH.IDX/USD"), which
+# flattens to USATECHIDXUSD in the datafeed path — not the broker-style
+# NAS100 that most platforms use. Keep the short name as the repo's symbol
+# (it names the CSVs) and translate only when building the URL.
+# NOT VERIFIED from this environment: the feed is unreachable here, so both
+# the feed names and the 1e3 scale above are convention, not observation.
+# sanity_prices() rejects an implausible result and --price-scale overrides.
+DUKASCOPY_SYMBOL = {
+    "NAS100": "USATECHIDXUSD",
+    "SPX500": "USA500IDXUSD",
+    "US30": "USA30IDXUSD",
+    "GER40": "DEUIDXEUR",
+}
 
 # Plausible median price per instrument, used to catch a wrong scale before
 # the data reaches disk. Wide enough to never fire on real data, tight
 # enough that a 10x or 100x scale error always trips it.
-PLAUSIBLE = {"XAUUSD": (500, 10000), "XAGUSD": (5, 200)}
+PLAUSIBLE = {"XAUUSD": (500, 10000), "XAGUSD": (5, 200),
+             "NAS100": (5000, 40000), "SPX500": (2000, 12000),
+             "US30": (15000, 80000), "GER40": (8000, 40000)}
 RECORD = struct.Struct(">iiiiif")  # time_offset, open, close, low, high, volume
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -91,6 +108,11 @@ def fetch_url(url, retries=4):
             delay *= 2
 
 
+def feed_symbol(pair):
+    """The name Dukascopy's datafeed uses for this instrument."""
+    return DUKASCOPY_SYMBOL.get(pair.upper(), pair)
+
+
 def fetch_month(pair, year, month, side):
     """Download one monthly hour-candle file, using the local cache. Returns bytes."""
     cache = os.path.join(RAW_DIR, f"{pair}-{year}-{month:02d}-{side}.bi5")
@@ -98,7 +120,7 @@ def fetch_month(pair, year, month, side):
         with open(cache, "rb") as f:
             return f.read()
     # Dukascopy months are 0-indexed in the URL path (00 = January)
-    url = f"{BASE}/{pair}/{year}/{month - 1:02d}/{side}_candles_hour_1.bi5"
+    url = f"{BASE}/{feed_symbol(pair)}/{year}/{month - 1:02d}/{side}_candles_hour_1.bi5"
     data = fetch_url(url)
     os.makedirs(RAW_DIR, exist_ok=True)
     with open(cache, "wb") as f:

@@ -48,8 +48,23 @@ MAX_COUNT = 5000                  # v20 hard cap per request
 PRICE_FIELD = {"mid": "M", "bid": "B", "ask": "A"}
 
 
+# Non-FX instruments do not follow the 3+3 split (NAS100 would become
+# NAS_100). OANDA's CFD names are given explicitly.
+OANDA_INSTRUMENT = {
+    "NAS100": "NAS100_USD",
+    "SPX500": "SPX500_USD",
+    "US30": "US30_USD",
+    "GER40": "DE30_EUR",
+    "XAUUSD": "XAU_USD",
+    "XAGUSD": "XAG_USD",
+}
+
+
 def instrument(pair):
-    """EURUSD -> EUR_USD (the v20 instrument name)."""
+    """EURUSD -> EUR_USD; NAS100 -> NAS100_USD (the v20 instrument name)."""
+    pair = pair.upper()
+    if pair in OANDA_INSTRUMENT:
+        return OANDA_INSTRUMENT[pair]
     return f"{pair[:3]}_{pair[3:]}"
 
 
