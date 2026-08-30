@@ -1,0 +1,72 @@
+{
+  "pairs": [
+    "AUDCHF",
+    "AUDUSD",
+    "EURCHF",
+    "EURUSD"
+  ],
+  "config": {
+    "swing_n": 2,
+    "retest_window_bars": 24,
+    "sl_mode": "origin-swing",
+    "sl_buffer_pips": 1.0,
+    "rr": 1.8,
+    "risk_pct": 1.0,
+    "start_equity": 10000.0,
+    "breakeven": false,
+    "partial_at_1r": false,
+    "partial_frac": 0.5,
+    "warmup_swings": 0,
+    "min_break_pips": 0.0,
+    "trend_mode": "break"
+  },
+  "total_trades": 168,
+  "wins": 56,
+  "losses": 112,
+  "scratches": 0,
+  "partials": 0,
+  "open_at_end": 4,
+  "ambiguous_bars": 0,
+  "win_rate_pct": 33.33,
+  "profit_factor": 0.89,
+  "net_profit": -1201.19,
+  "net_return_pct": -12.01,
+  "max_drawdown_pct": 18.8,
+  "avg_r": -0.067,
+  "total_r": -11.2,
+  "final_equity": 8798.81,
+  "per_pair": {
+    "AUDCHF": {
+      "trades": 30,
+      "wins": 12,
+      "partials": 0,
+      "win_rate_pct": 40.0,
+      "avg_r": 0.12,
+      "pnl": 317.8
+    },
+    "AUDUSD": {
+      "trades": 48,
+      "wins": 16,
+      "partials": 0,
+      "win_rate_pct": 33.33,
+      "avg_r": -0.067,
+      "pnl": -353.46
+    },
+    "EURCHF": {
+      "trades": 24,
+      "wins": 9,
+      "partials": 0,
+      "win_rate_pct": 37.5,
+      "avg_r": 0.05,
+      "pnl": 76.6
+    },
+    "EURUSD": {
+      "trades": 66,
+      "wins": 19,
+      "partials": 0,
+      "win_rate_pct": 28.79,
+      "avg_r": -0.194,
+      "pnl": -1242.12
+    }
+  }
+}
