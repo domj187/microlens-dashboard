@@ -40,6 +40,7 @@ import csv
 import json
 import os
 import statistics
+import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -186,6 +187,25 @@ def is_swing(candles: list[Candle], i: int, n: int, kind: str) -> bool:
     return all(candles[j].l > v for j in range(i - n, i + n + 1) if j != i)
 
 
+def atr_series(candles: list[Candle], period: int = 14) -> list[float | None]:
+    """ATR(period) ending at each bar; None until there is enough history.
+
+    Value at index i uses bars i-period+1..i only, all of which are closed by
+    the time bar i closes, so reading it on bar i is not look-ahead.
+    """
+    trs, out = [], [None] * len(candles)
+    run = 0.0
+    for i, c in enumerate(candles):
+        tr = c.h - c.l if i == 0 else max(c.h - c.l, abs(c.h - candles[i-1].c),
+                                          abs(c.l - candles[i-1].c))
+        trs.append(tr)
+        run += tr
+        if i >= period:
+            run -= trs[i - period]      # keep exactly `period` terms: i-period+1..i
+            out[i] = run / period
+    return out
+
+
 class TrendTracker:
     """Market-structure trend on one timeframe (used for Daily and 8H bias).
 
@@ -203,14 +223,21 @@ class TrendTracker:
     that many fractal swings in total (highs + lows).
     min_break: a break only counts if the close clears the level by at
     least this distance (in price units).
+    min_break_atr: same filter expressed as a fraction of this timeframe's
+    own ATR(14) instead of a fixed distance, so one number means the same
+    thing on EURUSD and on an index quoted in points. Takes precedence over
+    min_break when set. Bars before ATR is available set no state.
     """
 
     def __init__(self, candles: list[Candle], n: int,
-                 warmup_swings: int = 0, min_break: float = 0.0, mode: str = "break"):
+                 warmup_swings: int = 0, min_break: float = 0.0, mode: str = "break",
+                 min_break_atr: float = 0.0, atr_period: int = 14):
         self.candles = candles
         self.n = n
         self.warmup = warmup_swings
         self.min_break = min_break
+        self.min_break_atr = min_break_atr
+        self.atr = atr_series(candles, atr_period) if min_break_atr else None
         self.mode = mode
         self.i = 0                      # next candle index to ingest
         self.highs: list[Swing] = []    # confirmed, chronological
@@ -233,8 +260,15 @@ class TrendTracker:
             self.i += 1
             if self.warmup and len(self.highs) + len(self.lows) < self.warmup:
                 continue
-            up_brk = bool(self.highs) and c.c > self.highs[-1].price + self.min_break
-            dn_brk = bool(self.lows) and c.c < self.lows[-1].price - self.min_break
+            if self.atr is not None:
+                a = self.atr[i]
+                if a is None:
+                    continue    # filter not sizeable yet: leave the state alone
+                thr = self.min_break_atr * a
+            else:
+                thr = self.min_break
+            up_brk = bool(self.highs) and c.c > self.highs[-1].price + thr
+            dn_brk = bool(self.lows) and c.c < self.lows[-1].price - thr
             if self.mode == "hhll":
                 higher_low = len(self.lows) >= 2 and self.lows[-1].price > self.lows[-2].price
                 lower_high = len(self.highs) >= 2 and self.highs[-1].price < self.highs[-2].price
@@ -376,10 +410,11 @@ def run_pair(pair: str, cfg: argparse.Namespace) -> list[Trade]:
     h4 = StructureTracker(load_candles(pair, "240"), cfg.swing_n)
     pip = pip_size(pair)
     min_break = cfg.min_break_pips * pip
+    mb_atr = getattr(cfg, "min_break_atr", 0.0) or 0.0
     h8 = TrendTracker(load_candles(pair, "480"), cfg.swing_n,
-                      cfg.warmup_swings, min_break, cfg.trend_mode)
+                      cfg.warmup_swings, min_break, cfg.trend_mode, mb_atr)
     d1 = TrendTracker(load_candles(pair, "1D"), cfg.swing_n,
-                      cfg.warmup_swings, min_break, cfg.trend_mode)
+                      cfg.warmup_swings, min_break, cfg.trend_mode, mb_atr)
 
     buffer = cfg.sl_buffer_pips * pip
     trades: list[Trade] = []
@@ -630,7 +665,8 @@ def run_portfolio(all_trades: list[Trade], cfg: argparse.Namespace):
             "entry_mode": cfg.entry_mode, "swing_seq": cfg.swing_seq,
             "breakeven": cfg.breakeven, "partial_at_1r": cfg.partial_at_1r,
             "partial_frac": cfg.partial_frac, "warmup_swings": cfg.warmup_swings,
-            "min_break_pips": cfg.min_break_pips, "trend_mode": cfg.trend_mode,
+            "min_break_pips": cfg.min_break_pips,
+            "min_break_atr": cfg.min_break_atr, "trend_mode": cfg.trend_mode,
         },
         "total_trades": len(closed),
         "wins": len(wins),
@@ -779,6 +815,12 @@ def main():
                     help="a D/8H structure break only flips the trend state if "
                          "the close clears the swing level by at least this many "
                          "pips (default 0 = off)")
+    ap.add_argument("--min-break-atr", type=float, default=0.0,
+                    help="same filter as --min-break-pips but sized as a "
+                         "fraction of each timeframe's own ATR(14), so one "
+                         "value means the same thing on EURUSD and on an index "
+                         "quoted in points (default 0 = off). Overrides "
+                         "--min-break-pips when both are given")
     ap.add_argument("--trend-mode", choices=["break", "hhll"], default="break",
                     help="break: any close-break of the last confirmed swing "
                          "flips the D/8H trend (default). hhll: bull needs the "
@@ -823,6 +865,9 @@ def main():
                          "window fetched to another directory.")
     ap.add_argument("--out", default=os.path.join(HERE, "results"))
     cfg = ap.parse_args()
+    if cfg.min_break_atr and cfg.min_break_pips:
+        print(f"note: --min-break-atr {cfg.min_break_atr} overrides "
+              f"--min-break-pips {cfg.min_break_pips}", file=sys.stderr)
     if cfg.data_dir:
         set_data_dir(cfg.data_dir)
 

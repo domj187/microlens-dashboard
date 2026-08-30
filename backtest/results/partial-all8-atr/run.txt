@@ -1,0 +1,43 @@
+AUDCHF: 34 closed trades
+AUDUSD: 57 closed trades
+EURCHF: 28 closed trades
+EURUSD: 67 closed trades
+GBPJPY: 63 closed trades
+GBPUSD: 53 closed trades
+USDJPY: 56 closed trades
+NAS100: 74 closed trades
+
+Total trades:   432  (wins 108 / losses 206 / scratches 0 / partials 118, open at end: 5)
+Win rate:       25.0%
+Profit factor:  1.048
+Net return:     11.9%  (final equity 11,189.58)
+Max drawdown:   27.33%
+Avg R / trade:  0.035  (total 15.0R)
+Ambiguous bars (counted as per conservative rules): 6
+
+Setups: what happened between the BOS and the retest
+  pair       created  filled  bias flip  expired  superseded   flip %  median wait
+  AUDCHF          41      35          0        1           5     0.0%       1 bars
+  AUDUSD          77      58          0        5          14     0.0%       1 bars
+  EURCHF          41      28          0        4           9     0.0%       1 bars
+  EURUSD          83      68          0        3          12     0.0%       1 bars
+  GBPJPY          78      63          0        2          12     0.0%       1 bars
+  GBPUSD          62      53          0        0           9     0.0%       1 bars
+  NAS100          97      75          0        1          21     0.0%       1 bars
+  USDJPY          70      57          0        5           8     0.0%       1 bars
+  ALL            549     437          0       21          90     0.0%
+  (superseded = a later BOS replaced the pending setup before it filled;
+   median wait = 1H bars from the BOS to the fill, i.e. how long a
+   setup is actually exposed to a bias change)
+
+Per pair:
+  AUDCHF: 34 trades, win rate 14.71%, pnl -94.09
+  AUDUSD: 57 trades, win rate 19.3%, pnl -562.44
+  EURCHF: 28 trades, win rate 28.57%, pnl 127.18
+  EURUSD: 67 trades, win rate 23.88%, pnl -500.14
+  GBPJPY: 63 trades, win rate 28.57%, pnl 274.10
+  GBPUSD: 53 trades, win rate 16.98%, pnl 574.52
+  NAS100: 74 trades, win rate 29.73%, pnl -127.26
+  USDJPY: 56 trades, win rate 33.93%, pnl 1,497.71
+
+Outputs written to backtest/results/partial-all8-atr/ (trades.csv, equity_curve.csv, equity_curve.svg, summary.json)

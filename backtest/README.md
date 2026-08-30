@@ -41,6 +41,45 @@ reported pip figures mean a comparable distance everywhere:
 | XAGUSD | 0.01 | one cent |
 | NAS100, SPX500, US30, GER40 | 1.0 | one index point — indices are not FX; at ~20,000 with 150-400 point 4H swings this puts them on the same 100-400 scale as the JPY crosses and gold, and keeps a 1-pip stop buffer at 1 point |
 
+A fixed pip distance is still not scale-neutral across asset classes,
+because a pip is not a fixed fraction of an instrument's volatility.
+`--min-break-pips 5` works out to very different filters:
+
+| | 5 pips as a fraction of 8H ATR | of Daily ATR |
+|---|---|---|
+| EURCHF | 0.204 | 0.111 |
+| AUDCHF | 0.198 | 0.112 |
+| AUDUSD | 0.158 | 0.089 |
+| EURUSD | 0.135 | 0.074 |
+| GBPUSD | 0.108 | 0.059 |
+| USDJPY | 0.074 | 0.041 |
+| GBPJPY | 0.060 | 0.034 |
+| **NAS100** | **0.028** | **0.015** |
+
+So the flag was never equal-terms even inside FX (EURCHF gets 3.4x
+GBPJPY's filter), and on an index it is roughly 5x weaker again.
+`--min-break-atr F` removes that: the threshold becomes `F x ATR(14)` on
+each timeframe separately, recomputed per bar from bars that are already
+closed, so one number means the same thing everywhere. Bars before ATR(14)
+is available set no trend state at all. Passing both flags uses the ATR one
+and warns.
+
+**What it does not do is improve results.** At `--min-break-atr 0.10` —
+the value closest to what the pip filter was already applying to the FX
+pairs — all eight instruments come out where they were:
+
+```
+                trades   win%      PF   avg R   maxDD%    net%
+  pips 5.0         437  24.94   1.041   0.032    27.33   10.43
+  atr 0.10         432  25.00   1.048   0.035    27.33   11.90
+```
+
+An in-sample sweep does look like it improves things (`atr 0.20` gives PF
+1.111, net +27.6%), but that gain does not survive out of sample: on the
+2020-2022 USDJPY set the ranking inverts, with `pips 5.0` at PF 1.292 and
+`atr 0.20` at 1.198, declining monotonically as the fraction rises. Treat
+the flag as a units fix, not a tuning knob.
+
 Fetching a metal also needs the right integer price scale. Dukascopy is
 believed to serve XAUUSD at 1e3, but that is **unverified** — the feed is
 unreachable from the development environment. `sanity_prices()` rejects an
@@ -198,7 +237,9 @@ each directory contains:
    confirmed N fractal swings in total, so no trend is declared off the
    thin structure at the start of the data. `--min-break-pips X` requires a
    Daily/8H close to clear the swing level by at least X pips before the
-   trend state flips. `--trend-mode hhll` tightens the trend definition:
+   trend state flips; **`--min-break-atr F` is the same filter sized as a
+   fraction of that timeframe's own ATR(14)** and is the one to use across
+   asset classes (see below). `--trend-mode hhll` tightens the trend definition:
    bull needs the close-break of the last confirmed swing high AND a
    higher low behind it (last confirmed swing low above the previous one),
    bear the mirror image; an unqualified break against the current state
