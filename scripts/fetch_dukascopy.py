@@ -27,6 +27,7 @@ import argparse
 import csv
 import lzma
 import os
+import random
 import struct
 import sys
 import time as _time
@@ -90,8 +91,17 @@ def month_range(start, end):
             y, m = y + 1, 1
 
 
-def fetch_url(url, retries=4):
-    delay = 2
+def fetch_url(url, retries=4, throttle_base=20.0):
+    """GET with backoff.
+
+    Dukascopy answers a request for an instrument it does not serve with 404,
+    which we treat as "no data for this month". 503s, dropped TLS handshakes
+    and "EOF in violation of protocol" are the opposite signal: the server is
+    there and is refusing us, i.e. IP-level throttling. Those get a much
+    longer, jittered backoff than an ordinary transient error, because
+    retrying fast is what provoked them.
+    """
+    delay = 2.0
     for attempt in range(retries + 1):
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
@@ -100,11 +110,15 @@ def fetch_url(url, retries=4):
         except Exception as e:
             code = getattr(e, "code", None)
             if code == 404:
-                return b""  # month not published (e.g. current partial month edge)
+                return b""  # instrument/month not served
             if attempt == retries:
                 raise
-            print(f"    retry {attempt + 1} after error: {e}", file=sys.stderr)
-            _time.sleep(delay)
+            throttled = code == 503 or isinstance(e, urllib.error.URLError) and code is None
+            wait = (throttle_base * (attempt + 1) + random.uniform(0, 5)
+                    if throttled else delay)
+            print(f"    retry {attempt + 1} in {wait:.0f}s after "
+                  f"{'throttling' if throttled else 'error'}: {e}", file=sys.stderr)
+            _time.sleep(wait)
             delay *= 2
 
 
@@ -289,6 +303,12 @@ def main():
     ap.add_argument("--price-scale", type=float, default=None,
                     help="override the integer price scale (e.g. 1000 for XAUUSD "
                          "if the feed disagrees with the built-in table)")
+    ap.add_argument("--sleep", type=float, default=1.5,
+                    help="seconds between month downloads (default 1.5). Three "
+                         "years of one pair is ~72 requests; firing them "
+                         "back-to-back is what triggers Dukascopy's throttling. "
+                         "Raise it if you still see 503s; cached months are "
+                         "never re-requested, so an interrupted run resumes.")
     ap.add_argument("--offline", action="store_true", help="use only cached raw files")
     args = ap.parse_args()
 
@@ -332,7 +352,10 @@ def main():
                     with open(cache, "rb") as f:
                         data = f.read()
                 else:
+                    cached = os.path.exists(cache)
                     data = fetch_month(pair, year, month, side)
+                    if not cached and args.sleep:
+                        _time.sleep(args.sleep)   # pace: 3 years = ~72 requests
                 per_side[side] = parse_month(data, year, month, pair, args.price_scale)
             else:
                 for t in set().union(*per_side.values()):
@@ -358,7 +381,12 @@ def main():
             h1.append((t, *ohlc))
 
         if not h1:
-            print(f"  no data for {pair} — nothing written", file=sys.stderr)
+            print(f"  no data for {pair} — nothing written.\n"
+                  f"  If this followed 404s the instrument name is wrong "
+                  f"(feed symbol used: {feed_symbol(pair)}).\n"
+                  f"  If it followed 503s or dropped TLS handshakes you are "
+                  f"being throttled, not misnaming it — raise --sleep, or use "
+                  f"scripts/fetch_oanda.py.", file=sys.stderr)
             continue
 
         outputs = [
