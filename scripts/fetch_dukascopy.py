@@ -94,6 +94,51 @@ DATA_DIR = os.path.join(REPO_ROOT, "data")
 RAW_DIR = os.path.join(DATA_DIR, "raw")
 
 
+def probe(pair):
+    """Try candidate URL shapes for one month and report what the server says.
+
+    Includes EUR-USD as a control: if the control works and the target does
+    not, the shape is right and the instrument code is wrong.
+    """
+    code = feed_symbol(pair)
+    flat = pair.upper()
+    y, m = 2024, 1
+    candidates = [
+        ("documented shape", f"{BASE}/candles/hour/{code}/BID/{y}/{m}"),
+        ("control EUR-USD", f"{BASE}/candles/hour/EUR-USD/BID/{y}/{m}"),
+        ("lowercase price", f"{BASE}/candles/hour/{code}/bid/{y}/{m}"),
+        ("zero-padded month", f"{BASE}/candles/hour/{code}/BID/{y}/{m:02d}"),
+        ("zero-based month", f"{BASE}/candles/hour/{code}/BID/{y}/{m - 1}"),
+        ("dot percent-encoded", f"{BASE}/candles/hour/{code.replace('.', '%2E')}/BID/{y}/{m}"),
+        ("no dot/hyphen", f"{BASE}/candles/hour/{flat}/BID/{y}/{m}"),
+        ("daily granularity", f"{BASE}/candles/day/{code}/BID/{y}"),
+        ("instrument metadata", f"{BASE}/instruments/{code}"),
+        ("instrument list", f"{BASE}/instruments"),
+    ]
+    print(f"probing {pair} (code {code}) against {BASE}\n")
+    for label, url in candidates:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                body = r.read()
+                print(f"  {label:<22} HTTP {r.status}  {len(body)} bytes")
+                print(f"    {url}")
+                print(f"    {body[:180].decode('utf-8', 'replace')}")
+        except urllib.error.HTTPError as e:
+            body = ""
+            try:
+                body = e.read().decode("utf-8", "replace").strip()
+            except Exception:
+                pass
+            print(f"  {label:<22} HTTP {e.code}")
+            print(f"    {url}")
+            print(f"    {body[:180] or '(empty body)'}")
+        except Exception as e:
+            print(f"  {label:<22} {type(e).__name__}: {e}\n    {url}")
+        print()
+        _time.sleep(1.0)
+
+
 def month_range(start, end):
     """Yield (year, month) covering [start, end] inclusive."""
     y, m = start.year, start.month
@@ -120,17 +165,40 @@ def fetch_url(url, retries=4, throttle_base=20.0):
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
             with urllib.request.urlopen(req, timeout=60) as resp:
                 return resp.read()
-        except Exception as e:
-            code = getattr(e, "code", None)
+        except urllib.error.HTTPError as e:
+            code = e.code
+            body = ""
+            try:
+                body = e.read().decode("utf-8", "replace").strip()
+            except Exception:
+                pass
             if code == 404:
                 return b""  # instrument/month not served
+            if 400 <= code < 500 and code != 429:
+                # The request itself is wrong; retrying it changes nothing.
+                raise SystemExit(
+                    f"\n  HTTP {code} — the server rejected the request.\n"
+                    f"  URL:  {url}\n"
+                    f"  Body: {body[:1000] or '(empty)'}\n"
+                    f"  Retrying a malformed request will not help. Run\n"
+                    f"    python3 {os.path.basename(__file__)} --probe <PAIR>\n"
+                    f"  to test URL variants against a known-good control.")
             if attempt == retries:
-                raise
-            throttled = code == 503 or isinstance(e, urllib.error.URLError) and code is None
+                raise SystemExit(f"HTTP {code} after {retries} retries\n"
+                                 f"  URL:  {url}\n  Body: {body[:500] or '(empty)'}")
+            throttled = code in (429, 503)
             wait = (throttle_base * (attempt + 1) + random.uniform(0, 5)
                     if throttled else delay)
-            print(f"    retry {attempt + 1} in {wait:.0f}s after "
-                  f"{'throttling' if throttled else 'error'}: {e}", file=sys.stderr)
+            print(f"    retry {attempt + 1} in {wait:.0f}s after HTTP {code}"
+                  f"{' (throttled)' if throttled else ''}: {url}", file=sys.stderr)
+            _time.sleep(wait)
+            delay *= 2
+        except Exception as e:
+            if attempt == retries:
+                raise SystemExit(f"{type(e).__name__}: {e}\n  URL: {url}")
+            wait = throttle_base * (attempt + 1) + random.uniform(0, 5)
+            print(f"    retry {attempt + 1} in {wait:.0f}s after {e}: {url}",
+                  file=sys.stderr)
             _time.sleep(wait)
             delay *= 2
 
@@ -373,8 +441,16 @@ def main():
                          "back-to-back is what triggers Dukascopy's throttling. "
                          "Raise it if you still see 503s; cached months are "
                          "never re-requested, so an interrupted run resumes.")
+    ap.add_argument("--probe", metavar="PAIR", default=None,
+                    help="diagnose a rejected instrument: request one month "
+                         "under several URL shapes plus a known-good control, "
+                         "and print each status and response body")
     ap.add_argument("--offline", action="store_true", help="use only cached raw files")
     args = ap.parse_args()
+
+    if args.probe:
+        probe(args.probe)
+        return
 
     def parse_day(text, what):
         try:
