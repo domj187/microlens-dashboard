@@ -1,26 +1,30 @@
-Data range: 2023-08-29 to 2026-07-31   (9 pairs, 4H fractal n=2)
+Data range: 2023-08-29 to 2026-07-31   (11 pairs, 4H fractal n=2)
 
 4H SWING STRUCTURE
   pair       legs   median    mean   x ATR
   USDJPY      958   106.0p  130.6p    2.35
+  USDCAD      951    58.4p   68.1p    2.36
   NAS100      971   314.9p  395.4p    2.65
+  XAUUSD      996   406.7p  606.7p    2.35
   GBPJPY      964   131.5p  163.1p    2.28
   EURUSD      994    60.2p   70.3p    2.39
   EURCHF      960    37.8p   46.4p    2.27
-  AUDCHF      987    38.0p   46.5p    2.18
   CADJPY      944    79.9p   96.4p    2.35
+  AUDCHF      987    38.0p   46.5p    2.18
   GBPUSD      988    73.8p   84.7p    2.36
   AUDUSD      984    50.5p   59.4p    2.32
 
 BREAK OF STRUCTURE — what happens next
   pair      breaks  2x depth  reversal   open  vs 33.3%  retest
   USDJPY       577     48.4%     51.3%   0.3%    +15.0p   76.1%
+  USDCAD       600     44.2%     54.8%   1.0%    +10.8p   79.2%
   NAS100       619     43.3%     56.1%   0.6%    +10.0p   77.1%
+  XAUUSD       579     46.3%     52.2%   1.6%    +13.0p   68.7%
   GBPJPY       587     42.8%     57.1%   0.2%     +9.4p   78.2%
   EURUSD       616     40.9%     58.4%   0.6%     +7.6p   77.1%
   EURCHF       546     40.3%     59.0%   0.7%     +7.0p   82.1%
-  AUDCHF       576     35.2%     63.2%   1.6%     +1.9p   83.5%
   CADJPY       594     37.4%     62.3%   0.3%     +4.0p   80.5%
+  AUDCHF       576     35.2%     63.2%   1.6%     +1.9p   83.5%
   GBPUSD       600     38.3%     60.7%   1.0%     +5.0p   79.5%
   AUDUSD       608     34.4%     64.8%   0.8%     +1.0p   79.8%
   (33.3% is the no-edge baseline: target 2x depth away, invalidation 1x away)
@@ -28,12 +32,14 @@ BREAK OF STRUCTURE — what happens next
 DAILY TREND PERSISTENCE (bars before the state flips)
   pair       flips   median    mean
   USDJPY        32    23.0d   23.3d
+  USDCAD        31    20.0d   24.7d
   NAS100        43    15.0d   17.7d
+  XAUUSD        42    13.5d   18.2d
   GBPJPY        37    16.0d   20.3d
   EURUSD        36    20.5d   21.1d
   EURCHF        39    15.0d   19.3d
-  AUDCHF        37    18.0d   20.2d
   CADJPY        38    16.0d   19.7d
+  AUDCHF        37    18.0d   20.2d
   GBPUSD        43    13.0d   17.4d
   AUDUSD        40    14.0d   18.9d
 
@@ -43,12 +49,14 @@ SPREAD
   --bid-dir/--ask-dir to include spread in the ranking.
 
 RANKING for a structure-break-and-retest system (swing size in pips)
-  1. USDJPY   score 0.649   [follow_through 1.0 · retest_offered 0.0 · trend_persistence 1.0 · swing_size_pips 0.25]
-  2. NAS100   score 0.524   [follow_through 0.64 · retest_offered 0.14 · trend_persistence 0.2 · swing_size_pips 1.0]
-  3. GBPJPY   score 0.424   [follow_through 0.6 · retest_offered 0.28 · trend_persistence 0.3 · swing_size_pips 0.34]
-  4. EURUSD   score 0.382   [follow_through 0.47 · retest_offered 0.14 · trend_persistence 0.75 · swing_size_pips 0.08]
-  5. EURCHF   score 0.374   [follow_through 0.43 · retest_offered 0.81 · trend_persistence 0.2 · swing_size_pips 0.0]
-  6. AUDCHF   score 0.326   [follow_through 0.06 · retest_offered 1.0 · trend_persistence 0.5 · swing_size_pips 0.0]
-  7. CADJPY   score 0.295   [follow_through 0.21 · retest_offered 0.59 · trend_persistence 0.3 · swing_size_pips 0.15]
-  8. GBPUSD   score 0.232   [follow_through 0.29 · retest_offered 0.46 · trend_persistence 0.0 · swing_size_pips 0.13]
-  9. AUDUSD   score 0.129   [follow_through 0.0 · retest_offered 0.5 · trend_persistence 0.1 · swing_size_pips 0.05]
+  1. USDJPY   score 0.737   [follow_through 1.0 · retest_offered 0.5 · trend_persistence 1.0 · swing_size_pips 0.18]
+  2. USDCAD   score 0.573   [follow_through 0.7 · retest_offered 0.71 · trend_persistence 0.7 · swing_size_pips 0.06]
+  3. NAS100   score 0.561   [follow_through 0.64 · retest_offered 0.57 · trend_persistence 0.2 · swing_size_pips 0.75]
+  4. XAUUSD   score 0.553   [follow_through 0.86 · retest_offered 0.0 · trend_persistence 0.05 · swing_size_pips 1.0]
+  5. GBPJPY   score 0.479   [follow_through 0.6 · retest_offered 0.64 · trend_persistence 0.3 · swing_size_pips 0.25]
+  6. EURUSD   score 0.464   [follow_through 0.47 · retest_offered 0.57 · trend_persistence 0.75 · swing_size_pips 0.06]
+  7. EURCHF   score 0.393   [follow_through 0.43 · retest_offered 0.91 · trend_persistence 0.2 · swing_size_pips 0.0]
+  8. CADJPY   score 0.328   [follow_through 0.21 · retest_offered 0.8 · trend_persistence 0.3 · swing_size_pips 0.11]
+  9. AUDCHF   score 0.326   [follow_through 0.06 · retest_offered 1.0 · trend_persistence 0.5 · swing_size_pips 0.0]
+  10. GBPUSD   score 0.280   [follow_through 0.29 · retest_offered 0.73 · trend_persistence 0.0 · swing_size_pips 0.1]
+  11. AUDUSD   score 0.177   [follow_through 0.0 · retest_offered 0.75 · trend_persistence 0.1 · swing_size_pips 0.03]

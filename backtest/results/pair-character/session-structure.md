@@ -1,4 +1,4 @@
-# Session breaks and holiday closures: does NAS100's calendar distort the read?
+# Session breaks and holiday closures: do NAS100 and XAUUSD's calendars distort the read?
 
 NAS100 is the first instrument in the set that does not trade 24/5. Everything
 below is measured on `data/NAS100_*.csv` (2023-08-30 → 2026-08-28) against the
@@ -111,3 +111,57 @@ Swing detection **is** biased by the session break — the short daily bar is
 follow-through or retest numbers, which hold to within a point across anchor
 choices, gap-scoring rules and window trims. NAS100's structural read stands
 as measured.
+
+
+---
+
+# XAUUSD — same calendar, same verdict
+
+Gold's session calendar is **identical** to NAS100's: 23 bars on a normal
+weekday, the same 17:00-18:00 New York break, and the same three missing
+Good Fridays (2024-03-29, 2025-04-18, 2026-04-03). It differs only in
+trading through more US holidays than the index does.
+
+```
+                  1H bars   normal weekday   zero-bar weekdays   4H buckets (bars each)
+  XAUUSD            17723               23                   3   4:3840  3:774  2:19  1:3
+  NAS100            17659               23                   3   4:3831  3:774  2:2   1:9
+  USDCAD            18660               24                   0   4:4662  3:2    2:3
+```
+
+Same anchor sweep, same conclusion — the short daily bar is swing-blind, but
+that bias does not reach the follow-through number:
+
+| anchor | swing rate full / short | breaks | follow-through |
+|---|---|---|---|
+| 17:00 NY (current) | 28.1% / **18.7%** | 579 | **46.3%** |
+| +1h | 30.0% / **10.1%** | 582 | 46.2% |
+| +2h | 30.2% / **11.0%** | 592 | 47.6% |
+| +3h | 30.4% / **10.1%** | 617 | 46.5% |
+
+Follow-through spans 46.2%-47.6%, i.e. ±0.7pp — the same tolerance NAS100
+showed. Gold's +13.0pp edge over the random-walk baseline is not an artifact
+of its session breaks.
+
+**USDCAD needs none of this**: 24 bars every weekday, no closures, 4662 of
+4667 4H buckets full. It is a plain 24/5 FX pair.
+
+## The one number that is NOT a calendar artifact: gold's retest rate
+
+XAUUSD posts the lowest retest availability in the set, 68.7%. Because gold's
+23-bar day makes a 24-*bar* window slightly *longer* in wall-clock terms than
+an FX pair's, the session break would if anything inflate that number, not
+depress it. Measured across window lengths, gold is lowest at every one:
+
+```
+  inst            12       24       48       96      240   (1H bars after the BOS)
+  USDJPY       66.0%    76.1%    84.2%    88.9%    93.2%
+  USDCAD       71.3%    79.2%    84.5%    88.7%    92.8%
+  NAS100       63.7%    77.1%    82.6%    87.2%    91.9%
+  XAUUSD       58.9%    68.7%    77.2%    81.9%    89.1%   <- lowest at every window
+  AUDCHF       76.4%    83.5%    87.7%    91.7%    94.4%
+```
+
+It pairs with the most skewed swing distribution in the set (mean/median leg
+1.49, against 1.15-1.26 everywhere else). Gold breaks structure, runs in big
+lumpy legs, and does not come back to offer the entry.
