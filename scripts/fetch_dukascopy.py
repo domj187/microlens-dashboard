@@ -61,11 +61,25 @@ PRICE_SCALE_TABLE = {"XAUUSD": 1e3, "XAGUSD": 1e3,
 # NOT VERIFIED from this environment: the feed is unreachable here, so both
 # the feed names and the 1e3 scale above are convention, not observation.
 # sanity_prices() rejects an implausible result and --price-scale overrides.
-DUKASCOPY_SYMBOL = {
-    "NAS100": "USATECHIDXUSD",
-    "SPX500": "USA500IDXUSD",
-    "US30": "USA30IDXUSD",
-    "GER40": "DEUIDXEUR",
+# CORRECTED against dukascopy-node's generated instrument metadata
+# (github.com/Leo4815162342/dukascopy-node, src/utils/instrument-meta-data/
+# generated/instrument-meta-data.json). The legacy .bi5 datafeed this script
+# uses serves FX fine but 503s on these index instruments, confirmed in
+# practice on both spellings. Dukascopy's maintained client no longer uses
+# the .bi5 path at all: it fetches JSON from https://jetta.dukascopy.com/v1
+# with the instrument's "code", e.g.
+#   https://jetta.dukascopy.com/v1/candles/hour/USATECH.IDX-USD/BID/2024/1
+# (month 1-based there, unlike the 0-based .bi5 path). Indices therefore
+# need that endpoint, not a different .bi5 spelling — see README.
+DUKASCOPY_SYMBOL = {}
+
+# instrument -> the v1 API "code" (not usable by this .bi5 fetcher)
+DUKASCOPY_V1_CODE = {
+    "NAS100": "USATECH.IDX-USD",   # metadata key usatechidxusd, "US 100 Tech Index"
+    "SPX500": "USA500.IDX-USD",
+    "US30": "USA30.IDX-USD",
+    "EURUSD": "EUR-USD",
+    "XAUUSD": "XAU-USD",
 }
 
 # Plausible median price per instrument, used to catch a wrong scale before
@@ -123,7 +137,7 @@ def fetch_url(url, retries=4, throttle_base=20.0):
 
 
 def feed_symbol(pair):
-    """The name Dukascopy's datafeed uses for this instrument."""
+    """The name the legacy .bi5 datafeed uses for this instrument."""
     return DUKASCOPY_SYMBOL.get(pair.upper(), pair)
 
 
@@ -380,6 +394,16 @@ def main():
                 ohlc = v[:4]
             h1.append((t, *ohlc))
 
+        if not h1 and pair.upper() in DUKASCOPY_V1_CODE and pair.upper() != "EURUSD":
+            print(f"  no data for {pair} — the legacy .bi5 datafeed does not serve\n"
+                  f"  this instrument. Its code on Dukascopy's current API is "
+                  f"{DUKASCOPY_V1_CODE[pair.upper()]}:\n"
+                  f"    https://jetta.dukascopy.com/v1/candles/hour/"
+                  f"{DUKASCOPY_V1_CODE[pair.upper()]}/BID/YYYY/M\n"
+                  f"  Prices there carry their own 'multiplier' field, so there is\n"
+                  f"  no fixed scale to configure. Use scripts/fetch_oanda.py, or\n"
+                  f"  see the README for the v1 route.", file=sys.stderr)
+            continue
         if not h1:
             print(f"  no data for {pair} — nothing written.\n"
                   f"  If this followed 404s the instrument name is wrong "

@@ -58,12 +58,29 @@ python3 scripts/fetch_dukascopy.py --pairs XAUUSD --years 3 --price-scale 100
 The repo's symbol is the short broker-style name (`NAS100`), which names the
 CSVs; each fetcher translates it to that source's own instrument string:
 
-| Symbol | Dukascopy datafeed | OANDA v20 |
+| Symbol | Dukascopy (v1 API code) | OANDA v20 |
 |---|---|---|
-| NAS100 | `USATECHIDXUSD` | `NAS100_USD` |
-| SPX500 | `USA500IDXUSD` | `SPX500_USD` |
-| US30 | `USA30IDXUSD` | `US30_USD` |
-| GER40 | `DEUIDXEUR` | `DE30_EUR` |
+| NAS100 | `USATECH.IDX-USD` | `NAS100_USD` |
+| SPX500 | `USA500.IDX-USD` | `SPX500_USD` |
+| US30 | `USA30.IDX-USD` | `US30_USD` |
+
+**The legacy `.bi5` datafeed does not serve these.** `fetch_dukascopy.py`
+uses `datafeed.dukascopy.com/datafeed/{SYM}/{year}/{month0}/...bi5`, which
+works for FX but returns 503 for index instruments on every spelling tried.
+Dukascopy's own maintained client (dukascopy-node) no longer uses that path:
+it reads JSON from `https://jetta.dukascopy.com/v1`, addressing instruments
+by a `code` (`EUR-USD`, `USATECH.IDX-USD` — note the hyphen and the dot),
+with the month **1-based** rather than 0-based:
+
+```
+https://jetta.dukascopy.com/v1/candles/hour/USATECH.IDX-USD/BID/2024/1
+```
+
+**Index price scale: there is no fixed scale to configure.** The v1 response
+carries its own `multiplier`; prices are integer units reconstructed as
+`units * multiplier` from a base candle plus deltas. That supersedes the
+guessed 1e3 index entry in `PRICE_SCALE_TABLE`, which only ever applied to
+the .bi5 path and is unused for indices now.
 
 ```bash
 python3 scripts/fetch_dukascopy.py --pairs NAS100 --years 3   # -> data/NAS100_*.csv
