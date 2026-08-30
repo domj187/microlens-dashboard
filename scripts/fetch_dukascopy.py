@@ -115,6 +115,17 @@ def probe(pair):
         ("instrument metadata", f"{BASE}/instruments/{code}"),
         ("instrument list", f"{BASE}/instruments"),
     ]
+    # The month in progress has no completed-period path: /{year}/{month}
+    # answers 400 for it and only the ?from= active-bucket form works. Probe
+    # both, because a probe that only asks for a finished month passes while
+    # the real fetch (which always ends on the current month) fails.
+    now = datetime.now(UTC)
+    cy, cm = now.year, now.month
+    cur_ms = int(datetime(cy, cm, 1, tzinfo=UTC).timestamp() * 1000)
+    candidates += [
+        (f"current month {cy}/{cm} path", f"{BASE}/candles/hour/{code}/BID/{cy}/{cm}"),
+        (f"current month ?from=", f"{BASE}/candles/hour/{code}/BID?from={cur_ms}"),
+    ]
     print(f"probing {pair} (code {code}) against {BASE}\n")
     for label, url in candidates:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
@@ -224,20 +235,48 @@ def cache_path(pair, year, month, side):
     return os.path.join(RAW_DIR, f"{pair}-{year}-{month:02d}-{side}.json")
 
 
-def fetch_month(pair, year, month, side):
+def is_active_month(year, month, now=None):
+    """True if (year, month) is the month currently in progress, in UTC.
+
+    The v1 API serves a *completed* month at /{year}/{month} and rejects that
+    path (HTTP 400) for the month that has not finished yet; the in-progress
+    bucket is served by ?from={bucket_start_ms} instead. dukascopy-node draws
+    the same distinction (getCompletedPeriodUrl vs getActivePeriodUrl).
+    """
+    now = now or datetime.now(UTC)
+    return (year, month) == (now.year, now.month)
+
+
+def month_url(pair, year, month, side, now=None):
+    """URL for one month of hourly candles.
+
+    The v1 month is 1-based (the old .bi5 path was 0-based). The current
+    month has no completed-period path, so it is requested as the active
+    bucket: ?from= the month start in epoch milliseconds.
+    """
+    base = f"{BASE}/candles/hour/{feed_symbol(pair)}/{side}"
+    if is_active_month(year, month, now):
+        start_ms = int(datetime(year, month, 1, tzinfo=UTC).timestamp() * 1000)
+        return f"{base}?from={start_ms}"
+    return f"{base}/{year}/{month}"
+
+
+def fetch_month(pair, year, month, side, now=None):
     """Download one month of hourly candles as JSON, using the local cache.
 
-    The v1 month is 1-based (the old .bi5 path was 0-based).
+    The in-progress month is never cached — it would freeze a partial month
+    on disk and every later run would silently reuse it.
     """
+    active = is_active_month(year, month, now)
     cache = cache_path(pair, year, month, side)
-    if os.path.exists(cache):
+    if not active and os.path.exists(cache):
         with open(cache, "rb") as f:
             return f.read()
-    url = f"{BASE}/candles/hour/{feed_symbol(pair)}/{side}/{year}/{month}"
-    data = fetch_url(url)
-    os.makedirs(RAW_DIR, exist_ok=True)
-    with open(cache, "wb") as f:
-        f.write(data)
+    data = fetch_url(month_url(pair, year, month, side, now))
+    if not active:
+        os.makedirs(RAW_DIR, exist_ok=True)
+        with open(cache, "wb") as f:
+            f.write(data)
     return data
 
 
@@ -459,8 +498,9 @@ def main():
             raise SystemExit(f"--{what} must be YYYY-MM-DD, got {text!r}")
 
     # --end is inclusive of the whole day; --start wins over --years
+    now = datetime.now(UTC)
     end = (parse_day(args.end, "end") + timedelta(days=1) - timedelta(seconds=1)
-           if args.end else datetime.now(UTC))
+           if args.end else now)
     if args.start:
         start = parse_day(args.start, "start")
     else:
@@ -484,7 +524,7 @@ def main():
     for pair in args.pairs:
         print(f"== {pair} ==")
         candles = {}  # utc time -> {side: (o,h,l,c,vol)}
-        for year, month in month_range(start, end):
+        for year, month in month_range(start, min(end, now)):
             per_side = {}
             for side in sides:
                 cache = cache_path(pair, year, month, side)
@@ -495,8 +535,9 @@ def main():
                     with open(cache, "rb") as f:
                         data = f.read()
                 else:
-                    cached = os.path.exists(cache)
-                    data = fetch_month(pair, year, month, side)
+                    cached = (not is_active_month(year, month, now)
+                              and os.path.exists(cache))
+                    data = fetch_month(pair, year, month, side, now)
                     if not cached and args.sleep:
                         _time.sleep(args.sleep)   # pace: 3 years = ~72 requests
                 per_side[side] = decode_month(data, pair)
@@ -523,23 +564,16 @@ def main():
                 ohlc = v[:4]
             h1.append((t, *ohlc))
 
-        if not h1 and pair.upper() in DUKASCOPY_V1_CODE and pair.upper() != "EURUSD":
-            print(f"  no data for {pair} — the legacy .bi5 datafeed does not serve\n"
-                  f"  this instrument. Its code on Dukascopy's current API is "
-                  f"{DUKASCOPY_V1_CODE[pair.upper()]}:\n"
-                  f"    https://jetta.dukascopy.com/v1/candles/hour/"
-                  f"{DUKASCOPY_V1_CODE[pair.upper()]}/BID/YYYY/M\n"
-                  f"  Prices there carry their own 'multiplier' field, so there is\n"
-                  f"  no fixed scale to configure. Use scripts/fetch_oanda.py, or\n"
-                  f"  see the README for the v1 route.", file=sys.stderr)
-            continue
         if not h1:
-            print(f"  no data for {pair} — nothing written.\n"
-                  f"  If this followed 404s the instrument name is wrong "
+            print(f"  no data for {pair} — nothing written "
                   f"(feed symbol used: {feed_symbol(pair)}).\n"
-                  f"  If it followed 503s or dropped TLS handshakes you are "
-                  f"being throttled, not misnaming it — raise --sleep, or use "
-                  f"scripts/fetch_oanda.py.", file=sys.stderr)
+                  f"  404s mean the instrument code is wrong: check it against\n"
+                  f"  dukascopy-node's instrument-meta-data.json and add it to\n"
+                  f"  DUKASCOPY_V1_CODE. 400s mean the URL shape is wrong for\n"
+                  f"  that month. 503s or dropped TLS handshakes are throttling,\n"
+                  f"  not a naming problem — raise --sleep, or use\n"
+                  f"  scripts/fetch_oanda.py. Run with --probe to see which.",
+                  file=sys.stderr)
             continue
 
         outputs = [

@@ -77,6 +77,21 @@ and metals are derived automatically (`EURUSD` -> `EUR-USD`); indices come
 from `DUKASCOPY_V1_CODE`. The old `.bi5` path served FX but returned 503 for
 every index spelling, which is why it was replaced.
 
+**The month currently in progress uses a different URL.** `/{year}/{month}`
+addresses a *completed* month and the server answers HTTP 400 for the one
+that has not finished yet; the live bucket is fetched as
+
+```
+https://jetta.dukascopy.com/v1/candles/hour/{code}/{BID|ASK}?from={month_start_ms}
+```
+
+with the month start in epoch milliseconds. Dukascopy's own client draws the
+same distinction (`getCompletedPeriodUrl` vs `getActivePeriodUrl`). This is
+easy to miss because any probe of a past month succeeds while every real
+fetch — which always ends on the current month — fails; `--probe` therefore
+requests both shapes for the current month explicitly. Months entirely in
+the future are never requested.
+
 **There is no price scale to configure any more.** Each response carries its
 own `multiplier`: prices arrive as integer units, reconstructed as
 `units * multiplier` from a base candle plus per-bar deltas, with bars the
@@ -107,7 +122,9 @@ python3 scripts/fetch_dukascopy.py --start 2020-01-01 --end 2022-12-31 \
 
 Raw monthly downloads are cached per pair/month/side independently of the
 window asked for, so overlapping windows reuse what is already on disk and
-only missing months are downloaded. Use `--out` for a different window so
+only missing months are downloaded. The month in progress is deliberately
+**not** cached — caching it would freeze a partial month on disk and every
+later run would silently reuse it. Use `--out` for a different window so
 it does not overwrite the working dataset in `data/`.
 
 `backtest.py`, `pair_character.py` and `period_breakdown.py` all take
