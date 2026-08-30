@@ -1,0 +1,21 @@
+XAUUSD: 74 closed trades
+
+Total trades:   74  (wins 25 / losses 33 / scratches 0 / partials 16, open at end: 0)
+Win rate:       33.78%
+Profit factor:  1.375
+Net return:     12.79%  (final equity 11,278.97)
+Max drawdown:   6.34%
+Avg R / trade:  0.169  (total 12.5R)
+Ambiguous bars (counted as per conservative rules): 1
+
+Setups: what happened between the BOS and the retest
+  pair       created  filled  bias flip  expired  superseded   flip %  median wait
+  XAUUSD          99      74          0        5          20     0.0%       1 bars
+  (superseded = a later BOS replaced the pending setup before it filled;
+   median wait = 1H bars from the BOS to the fill, i.e. how long a
+   setup is actually exposed to a bias change)
+
+Per pair:
+  XAUUSD: 74 trades, win rate 33.78%, pnl 1,278.97
+
+Outputs written to backtest/results/partial-xauusd-retest/ (trades.csv, equity_curve.csv, equity_curve.svg, summary.json)

@@ -1,0 +1,61 @@
+{
+  "pairs": [
+    "USDCAD"
+  ],
+  "config": {
+    "swing_n": 2,
+    "retest_window_bars": 24,
+    "sl_mode": "origin-swing",
+    "sl_buffer_pips": 1.0,
+    "rr": 2.0,
+    "risk_pct": 1.0,
+    "start_equity": 10000.0,
+    "entry_mode": "retest",
+    "swing_seq": 2,
+    "breakeven": false,
+    "partial_at_1r": true,
+    "partial_frac": 0.5,
+    "warmup_swings": 10,
+    "min_break_pips": 0.0,
+    "min_break_atr": 0.1,
+    "trend_mode": "break"
+  },
+  "total_trades": 57,
+  "wins": 15,
+  "losses": 25,
+  "scratches": 0,
+  "partials": 17,
+  "open_at_end": 1,
+  "ambiguous_bars": 1,
+  "setup_fates": {
+    "USDCAD": {
+      "created": 71,
+      "filled": 58,
+      "bias_flip": 0,
+      "window_expired": 1,
+      "superseded": 12,
+      "pending_at_end": 0,
+      "fill_wait_median_bars": 1.0,
+      "fill_wait_mean_bars": 2.2,
+      "fill_wait_max_bars": 11
+    }
+  },
+  "win_rate_pct": 26.32,
+  "profit_factor": 1.234,
+  "net_profit": 585.07,
+  "net_return_pct": 5.85,
+  "max_drawdown_pct": 5.42,
+  "avg_r": 0.105,
+  "total_r": 6.0,
+  "final_equity": 10585.07,
+  "per_pair": {
+    "USDCAD": {
+      "trades": 57,
+      "wins": 15,
+      "partials": 17,
+      "win_rate_pct": 26.32,
+      "avg_r": 0.105,
+      "pnl": 585.07
+    }
+  }
+}

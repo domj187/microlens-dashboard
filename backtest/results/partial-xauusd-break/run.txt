@@ -1,0 +1,14 @@
+XAUUSD: 75 closed trades
+
+Total trades:   75  (wins 30 / losses 34 / scratches 0 / partials 11, open at end: 0)
+Win rate:       40.0%
+Profit factor:  1.484
+Net return:     17.33%  (final equity 11,732.88)
+Max drawdown:   5.47%
+Avg R / trade:  0.22  (total 16.5R)
+Ambiguous bars (counted as per conservative rules): 0
+
+Per pair:
+  XAUUSD: 75 trades, win rate 40.0%, pnl 1,732.88
+
+Outputs written to backtest/results/partial-xauusd-break/ (trades.csv, equity_curve.csv, equity_curve.svg, summary.json)

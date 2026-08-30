@@ -1,0 +1,21 @@
+USDCAD: 57 closed trades
+
+Total trades:   57  (wins 15 / losses 25 / scratches 0 / partials 17, open at end: 1)
+Win rate:       26.32%
+Profit factor:  1.234
+Net return:     5.85%  (final equity 10,585.07)
+Max drawdown:   5.42%
+Avg R / trade:  0.105  (total 6.0R)
+Ambiguous bars (counted as per conservative rules): 1
+
+Setups: what happened between the BOS and the retest
+  pair       created  filled  bias flip  expired  superseded   flip %  median wait
+  USDCAD          71      58          0        1          12     0.0%       1 bars
+  (superseded = a later BOS replaced the pending setup before it filled;
+   median wait = 1H bars from the BOS to the fill, i.e. how long a
+   setup is actually exposed to a bias change)
+
+Per pair:
+  USDCAD: 57 trades, win rate 26.32%, pnl 585.07
+
+Outputs written to backtest/results/partial-usdcad/ (trades.csv, equity_curve.csv, equity_curve.svg, summary.json)

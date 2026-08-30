@@ -1,0 +1,34 @@
+AUDCHF: 60 closed trades
+AUDUSD: 55 closed trades
+CADJPY: 57 closed trades
+EURCHF: 25 closed trades
+EURUSD: 56 closed trades
+GBPJPY: 59 closed trades
+GBPUSD: 52 closed trades
+NAS100: 77 closed trades
+USDCAD: 50 closed trades
+USDJPY: 45 closed trades
+XAUUSD: 75 closed trades
+
+Total trades:   611  (wins 145 / losses 296 / scratches 0 / partials 170, open at end: 7)
+Win rate:       23.73%
+Profit factor:  1.006
+Net return:     2.05%  (final equity 10,205.29)
+Max drawdown:   32.43%
+Avg R / trade:  0.011  (total 6.5R)
+Ambiguous bars (counted as per conservative rules): 10
+
+Per pair:
+  AUDCHF: 60 trades, win rate 8.33%, pnl -897.02
+  AUDUSD: 55 trades, win rate 18.18%, pnl -211.87
+  CADJPY: 57 trades, win rate 26.32%, pnl -183.44
+  EURCHF: 25 trades, win rate 12.0%, pnl -83.14
+  EURUSD: 56 trades, win rate 19.64%, pnl -688.81
+  GBPJPY: 59 trades, win rate 25.42%, pnl -300.31
+  GBPUSD: 52 trades, win rate 15.38%, pnl -292.23
+  NAS100: 77 trades, win rate 24.68%, pnl -741.40
+  USDCAD: 50 trades, win rate 30.0%, pnl 778.35
+  USDJPY: 45 trades, win rate 31.11%, pnl 941.29
+  XAUUSD: 75 trades, win rate 40.0%, pnl 1,883.87
+
+Outputs written to backtest/results/entrymode-all11-break-close/ (trades.csv, equity_curve.csv, equity_curve.svg, summary.json)

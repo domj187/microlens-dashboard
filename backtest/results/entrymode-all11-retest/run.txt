@@ -1,0 +1,52 @@
+AUDCHF: 34 closed trades
+AUDUSD: 57 closed trades
+CADJPY: 65 closed trades
+EURCHF: 28 closed trades
+EURUSD: 67 closed trades
+GBPJPY: 63 closed trades
+GBPUSD: 53 closed trades
+NAS100: 74 closed trades
+USDCAD: 57 closed trades
+USDJPY: 56 closed trades
+XAUUSD: 74 closed trades
+
+Total trades:   628  (wins 162 / losses 299 / scratches 0 / partials 167, open at end: 7)
+Win rate:       25.8%
+Profit factor:  1.063
+Net return:     23.22%  (final equity 12,322.48)
+Max drawdown:   29.82%
+Avg R / trade:  0.044  (total 27.5R)
+Ambiguous bars (counted as per conservative rules): 10
+
+Setups: what happened between the BOS and the retest
+  pair       created  filled  bias flip  expired  superseded   flip %  median wait
+  AUDCHF          41      35          0        1           5     0.0%       1 bars
+  AUDUSD          77      58          0        5          14     0.0%       1 bars
+  CADJPY          80      66          0        2          12     0.0%       1 bars
+  EURCHF          41      28          0        4           9     0.0%       1 bars
+  EURUSD          83      68          0        3          12     0.0%       1 bars
+  GBPJPY          78      63          0        2          12     0.0%       1 bars
+  GBPUSD          62      53          0        0           9     0.0%       1 bars
+  NAS100          97      75          0        1          21     0.0%       1 bars
+  USDCAD          71      58          0        1          12     0.0%       1 bars
+  USDJPY          70      57          0        5           8     0.0%       1 bars
+  XAUUSD          99      74          0        5          20     0.0%       1 bars
+  ALL            799     635          0       29         134     0.0%
+  (superseded = a later BOS replaced the pending setup before it filled;
+   median wait = 1H bars from the BOS to the fill, i.e. how long a
+   setup is actually exposed to a bias change)
+
+Per pair:
+  AUDCHF: 34 trades, win rate 14.71%, pnl -138.56
+  AUDUSD: 57 trades, win rate 19.3%, pnl -628.54
+  CADJPY: 65 trades, win rate 21.54%, pnl -1,150.37
+  EURCHF: 28 trades, win rate 28.57%, pnl 72.00
+  EURUSD: 67 trades, win rate 23.88%, pnl -492.80
+  GBPJPY: 63 trades, win rate 28.57%, pnl 172.25
+  GBPUSD: 53 trades, win rate 16.98%, pnl 543.97
+  NAS100: 74 trades, win rate 29.73%, pnl -131.45
+  USDCAD: 57 trades, win rate 26.32%, pnl 902.73
+  USDJPY: 56 trades, win rate 33.93%, pnl 1,462.21
+  XAUUSD: 74 trades, win rate 33.78%, pnl 1,711.05
+
+Outputs written to backtest/results/entrymode-all11-retest/ (trades.csv, equity_curve.csv, equity_curve.svg, summary.json)
